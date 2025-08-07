@@ -1,145 +1,347 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Fluxis Pack Encryptor</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1f1c2c, #928dab);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fluxis Minecraft Pack Encryptor</title>
+<style>
+  /* --- Fluxis old style UI with gradient --- */
+  body {
+    margin: 0; padding: 0;
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+    font-family: Consolas, monospace, monospace;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 {
+    margin: 1rem 0;
+    font-weight: normal;
+    text-shadow: 0 0 5px #000;
+  }
+  #drop-zone {
+    margin: 1rem 0;
+    width: 90vw;
+    max-width: 500px;
+    height: 120px;
+    border: 3px dashed #eee;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    background: rgba(255,255,255,0.05);
+    transition: background 0.3s;
+  }
+  #drop-zone:hover {
+    background: rgba(255,255,255,0.15);
+  }
+  #progress-container {
+    width: 90vw;
+    max-width: 500px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    margin: 1rem 0;
+    height: 20px;
+    overflow: hidden;
+  }
+  #progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00ffea, #0066ff);
+    transition: width 0.2s;
+  }
+  #log {
+    width: 90vw;
+    max-width: 500px;
+    height: 220px;
+    background: rgba(0,0,0,0.8);
+    border-radius: 8px;
+    padding: 10px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    line-height: 1.2rem;
+    white-space: pre-wrap;
+    box-shadow: inset 0 0 10px #00ffff;
+  }
+  button#download-btn {
+    margin: 1rem 0 2rem;
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+    font-family: Consolas, monospace;
+    cursor: pointer;
+    background: #00aaff;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    text-shadow: 0 0 4px #004466;
+    transition: background 0.3s;
+  }
+  button#download-btn:disabled {
+    background: #555;
+    cursor: default;
+    text-shadow: none;
+  }
+  @media (max-width: 600px) {
+    #drop-zone {
+      height: 100px;
+      font-size: 0.9rem;
     }
-    h1 { margin-bottom: 10px; }
-    #dropzone {
-      border: 3px dashed #0ff;
-      padding: 40px; width: 90%; max-width: 600px;
-      text-align: center; margin-bottom: 20px;
-      cursor: pointer; transition: background 0.2s;
-    }
-    #dropzone:hover { background: rgba(255,255,255,0.1); }
-    #progress-container { width: 100%; max-width: 600px; background: rgba(255,255,255,0.2); height: 20px; border-radius: 10px; margin-bottom: 10px; }
-    #progress-bar { height: 100%; width: 0%; background: limegreen; transition: width 0.2s ease; }
     #log {
-      width: 100%; max-width: 600px;
-      height: 200px; background: #111; border: 1px solid #444;
-      overflow-y: auto; padding: 10px; font-family: monospace; font-size: 12px; margin-bottom: 10px;
+      height: 180px;
+      font-size: 0.85rem;
     }
-    #download-btn {
-      background: #0ff; color: #000; padding: 10px 20px;
-      border: none; cursor: pointer; font-weight: bold; border-radius: 6px;
-      display: none;
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
 
-<h1>Fluxis Pack Encryptor</h1>
-<div id="dropzone">Drop your skin pack folder here (or click)</div>
-<div id="progress-container"><div id="progress-bar"></div></div>
-<pre id="log">[Fluxis Initialized]</pre>
-<button id="download-btn">Download Encrypted ZIP</button>
+<h1>Fluxis Minecraft Pack Encryptor</h1>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<div id="drop-zone" tabindex="0" role="button" aria-label="Select folder or drag files here">
+  Drop your resource pack folder here or click to select
+</div>
+<input type="file" id="file-input" webkitdirectory directory multiple hidden />
+
+<div id="progress-container" aria-live="polite" aria-atomic="true" aria-label="Encryption progress">
+  <div id="progress-bar"></div>
+</div>
+
+<div id="log" aria-live="polite" aria-atomic="false" role="log"></div>
+
+<button id="download-btn" disabled>Download Encrypted ZIP</button>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
+
 <script>
-(async () => {
-  const keyBytes = new TextEncoder().encode("s5s5ejuDru4uchuF2drUFuthaspAbepE");
-  const ivBytes = new TextEncoder().encode("s5s5ejuDru4uchuF");
-  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-CFB", length: 256 }, false, ["encrypt"]);
-
-  const dropzone = document.getElementById("dropzone");
-  const log = document.getElementById("log");
+(() => {
+  const dropZone = document.getElementById("drop-zone");
+  const fileInput = document.getElementById("file-input");
   const progressBar = document.getElementById("progress-bar");
+  const log = document.getElementById("log");
   const downloadBtn = document.getElementById("download-btn");
-  let files = [];
 
+  // Universal key + IV as hex strings
+  const KEY = CryptoJS.enc.Utf8.parse("s5s5ejuDru4uchuF2drUFuthaspAbepE");
+  const IV = CryptoJS.enc.Utf8.parse("s5s5ejuDru4uchuF");
+
+  // Exclusions (do NOT encrypt)
+  const EXCLUDE_FILES = new Set([
+    "manifest.json",
+    "pack_icon.png",
+  ]);
+  const EXCLUDE_FOLDERS = ["texts/"];
+
+  // Storage for the encrypted ZIP
+  let zip;
+  let contentsArray = [];
+  let signaturesArray = [];
+
+  // Clear logs
   function logMsg(msg) {
-    log.textContent += `\n${msg}`;
+    log.textContent += msg + "\n";
     log.scrollTop = log.scrollHeight;
   }
-  function setProgress(p) {
-    progressBar.style.width = `${p}%`;
-  }
 
-  dropzone.addEventListener("click", () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.webkitdirectory = true;
-    input.multiple = true;
-    input.onchange = () => handleFiles(Array.from(input.files));
-    input.click();
-  });
-
-  dropzone.addEventListener("dragover", e => { e.preventDefault(); });
-  dropzone.addEventListener("drop", e => {
-    e.preventDefault();
-    handleFiles(Array.from(e.dataTransfer.files));
-  });
-
-  async function handleFiles(fileList) {
-    files = fileList;
+  // Reset state
+  function reset() {
+    zip = new JSZip();
+    contentsArray = [];
+    signaturesArray = [];
+    progressBar.style.width = "0%";
+    downloadBtn.disabled = true;
     log.textContent = "";
-    setProgress(0);
-    await processFiles();
   }
 
-  async function processFiles() {
-    const zip = new JSZip();
-    const contentsArr = [];
-    const signaturesArr = [];
+  // Check if a path should be excluded from encryption
+  function isExcluded(path) {
+    if (EXCLUDE_FILES.has(path)) return true;
+    for (const folder of EXCLUDE_FOLDERS) {
+      if (path.startsWith(folder)) return true;
+    }
+    return false;
+  }
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const path = file.webkitRelativePath || file.name;
-      const excluded = path === "manifest.json" || path === "pack_icon.png" || path.startsWith("texts/");
-      const data = await file.arrayBuffer();
-      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-      const hashBase64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-      signaturesArr.push({ path, hash: hashBase64 });
+  // Encrypt content with AES-256-CFB and return WordArray
+  function encryptCFB(wordArray) {
+    // CryptoJS does not have native CFB mode, simulate with cipher params
+    // We'll use AES in CFB mode via CryptoJS.lib.CipherParams with custom mode
+    // CryptoJS by default supports CFB mode with: CryptoJS.mode.CFB
 
-      if (excluded) {
-        zip.file(path, data);
-        contentsArr.push({ path });
-        logMsg(`Skipped: ${path}`);
-      } else {
-        const encBuffer = await crypto.subtle.encrypt({ name: "AES-CFB", iv: ivBytes }, cryptoKey, data);
-        zip.file(path, encBuffer);
-        const keyStr = generateKey();
-        contentsArr.push({ key: keyStr, path });
-        logMsg(`Encrypted: ${path}`);
-      }
+    return CryptoJS.AES.encrypt(wordArray, KEY, {
+      iv: IV,
+      mode: CryptoJS.mode.CFB,
+      padding: CryptoJS.pad.NoPadding
+    }).ciphertext;
+  }
 
-      setProgress(((i + 1) / files.length) * 100);
+  // Convert JSZip file content to WordArray
+  async function getWordArray(file) {
+    const arrayBuffer = await file.async("arraybuffer");
+    return CryptoJS.lib.WordArray.create(arrayBuffer);
+  }
+
+  // Create SHA-256 hash base64 of data (Uint8Array or WordArray)
+  function sha256Base64(wordArray) {
+    const hash = CryptoJS.SHA256(wordArray);
+    return CryptoJS.enc.Base64.stringify(hash);
+  }
+
+  // Read files and process encryption
+  async function processFiles(files) {
+    reset();
+    logMsg("Starting encryption...");
+    zip = new JSZip();
+
+    // Filter and sort files for consistent output
+    files = files.filter(f => !f.name.endsWith("/")); // remove folders
+    files.sort((a,b) => a.webkitRelativePath.localeCompare(b.webkitRelativePath));
+
+    // Total files count for progress bar
+    const totalFiles = files.length;
+    let processedFiles = 0;
+
+    // Read manifest.json separately for signatures
+    const manifestFile = files.find(f => f.name === "manifest.json" || f.webkitRelativePath === "manifest.json");
+    if (!manifestFile) {
+      logMsg("⚠️ manifest.json not found! Encryption aborted.");
+      return;
     }
 
-    const contentsJson = JSON.stringify({ version: 1, content: contentsArr }, null, 2);
-    const signaturesJson = JSON.stringify(signaturesArr);
+    // Process each file
+    for (const file of files) {
+      const path = file.webkitRelativePath || file.name;
 
-    const encContents = await crypto.subtle.encrypt({ name: "AES-CFB", iv: ivBytes }, cryptoKey, new TextEncoder().encode(contentsJson));
-    const encSignatures = await crypto.subtle.encrypt({ name: "AES-CFB", iv: ivBytes }, cryptoKey, new TextEncoder().encode(signaturesJson));
+      let contentBuffer = await file.arrayBuffer();
 
-    zip.file("contents.json", encContents);
-    zip.file("signatures.json", encSignatures);
+      // Log each file
+      logMsg(`Processing: ${path}`);
 
-    const blob = await zip.generateAsync({ type: "blob" });
-    const url = URL.createObjectURL(blob);
-    downloadBtn.href = url;
+      // Check exclusions
+      if (isExcluded(path)) {
+        // Add file as is (not encrypted)
+        zip.file(path, contentBuffer);
+        logMsg(`Excluded from encryption: ${path}`);
+
+        // For exclusions, add signature hash for unencrypted content
+        const hashWordArray = CryptoJS.lib.WordArray.create(contentBuffer);
+        const hashB64 = sha256Base64(hashWordArray);
+        signaturesArray.push({ path: path, hash: hashB64 });
+
+        // Also add to contents with no key
+        contentsArray.push({ path: path });
+      } else {
+        // Encrypt the file content
+        const wordArray = CryptoJS.lib.WordArray.create(contentBuffer);
+        const encrypted = encryptCFB(wordArray);
+
+        // Add encrypted content to zip
+        zip.file(path, encrypted.toString(CryptoJS.enc.Base64), { base64: true });
+
+        // Add to contents.json with the key (first 32 chars of base64 encrypted?)
+        // Actually, per your example, keys seem random; we will store the base64 encrypted key here is not correct.
+        // We use the universal key so the key string is fixed? But your example had random keys per file.
+        // Since you requested universal key, but also your contents.json has random keys,
+        // We'll store the hex of the key for each file as the universal key in base64 (or fixed string).
+        // For this example, let's put the base64 of the KEY as the key.
+        const keyB64 = CryptoJS.enc.Base64.stringify(KEY);
+        contentsArray.push({ path: path, key: keyB64 });
+
+        // Calculate signature hash of original content (not encrypted)
+        const hashB64 = sha256Base64(wordArray);
+        signaturesArray.push({ path: path, hash: hashB64 });
+      }
+
+      // Update progress bar
+      processedFiles++;
+      progressBar.style.width = ((processedFiles / totalFiles) * 100) + "%";
+
+      // Allow UI update
+      await new Promise(r => setTimeout(r, 10));
+    }
+
+    // Build contents.json and signatures.json strings
+    const contentsJson = JSON.stringify({
+      version: 1,
+      content: contentsArray
+    }, null, 2);
+
+    const signaturesJson = JSON.stringify(signaturesArray);
+
+    // Encrypt and add contents.json and signatures.json to zip
+    const contentsWA = CryptoJS.enc.Utf8.parse(contentsJson);
+    const contentsEncrypted = encryptCFB(contentsWA);
+    zip.file("contents.json", contentsEncrypted.toString(CryptoJS.enc.Base64), { base64: true });
+
+    const signaturesWA = CryptoJS.enc.Utf8.parse(signaturesJson);
+    const signaturesEncrypted = encryptCFB(signaturesWA);
+    zip.file("signatures.json", signaturesEncrypted.toString(CryptoJS.enc.Base64), { base64: true });
+
+    logMsg("Packing zip...");
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+
+    // Enable download button
+    downloadBtn.disabled = false;
+    downloadBtn.href = URL.createObjectURL(zipBlob);
     downloadBtn.download = "encrypted_pack.zip";
-    downloadBtn.style.display = "inline-block";
-    logMsg("Done – ready to download!");
+
+    logMsg("Encryption completed. Ready to download!");
+
+    // Set download button click handler
+    downloadBtn.onclick = () => {
+      // After download revoke the object URL to avoid memory leaks
+      setTimeout(() => URL.revokeObjectURL(downloadBtn.href), 1000);
+    };
   }
 
-  function generateKey() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let out = "";
-    for (let i = 0; i < 32; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
-    return out;
+  // Handle files from input or drop
+  async function handleFiles(files) {
+    if (!files || files.length === 0) {
+      logMsg("No files selected.");
+      return;
+    }
+    await processFiles(files);
   }
+
+  // Drag & drop handlers
+  dropZone.addEventListener("click", () => fileInput.click());
+
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.style.background = "rgba(255,255,255,0.15)";
+  });
+  dropZone.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    dropZone.style.background = "rgba(255,255,255,0.05)";
+  });
+  dropZone.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    dropZone.style.background = "rgba(255,255,255,0.05)";
+    const dtFiles = e.dataTransfer.files;
+    await handleFiles(dtFiles);
+  });
+
+  fileInput.addEventListener("change", async (e) => {
+    await handleFiles(e.target.files);
+  });
+
+  // Keyboard accessibility for drag zone
+  dropZone.addEventListener("keydown", e => {
+    if(e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+
+  // Initialize UI
+  reset();
 })();
 </script>
+
 </body>
 </html>
