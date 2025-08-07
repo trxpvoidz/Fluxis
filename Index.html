@@ -2,387 +2,474 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Fluxis - McEncryptor JS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>McEncryptor AES-256-CFB-8</title>
 <style>
   body {
-    background: #111;
+    margin: 0; padding: 0; background: #0e0e0e;
+    font-family: 'Consolas', monospace;
     color: #eee;
-    font-family: monospace, monospace;
-    margin: 0; padding: 0;
-    display: flex; flex-direction: column; height: 100vh;
-  }
-  header {
-    background: linear-gradient(45deg, #3a3a3a, #1a1a1a);
-    padding: 1em;
-    font-weight: bold;
-    font-size: 1.4em;
-    text-align: center;
     user-select: none;
   }
-  main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 1em;
-    gap: 0.5em;
+  header {
+    background: linear-gradient(90deg, #7f00ff, #e100ff);
+    text-align: center;
+    padding: 15px 10px;
+    font-weight: 700;
+    font-size: 1.5em;
+    color: #fff;
+    letter-spacing: 1.1px;
+  }
+  #drop-area {
+    border: 3px dashed #7f00ff;
+    margin: 20px auto;
+    max-width: 600px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    border-radius: 10px;
+  }
+  #drop-area.hover {
+    background-color: #330044;
+  }
+  #fileElem {
+    display: none;
+  }
+  button {
+    background: #7f00ff;
+    border: none;
+    padding: 10px 20px;
+    color: white;
+    font-size: 1.1em;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-top: 10px;
   }
   #log {
-    flex: 1;
-    background: #222;
-    padding: 1em;
+    max-width: 600px;
+    margin: 10px auto 40px;
+    height: 320px;
+    background: #111;
+    border-radius: 8px;
     overflow-y: auto;
-    white-space: pre-wrap;
-    border-radius: 4px;
+    padding: 12px;
+    font-size: 0.9em;
+    line-height: 1.3em;
   }
-  #log a {
-    color: #56caff;
+  #log div {
+    cursor: default;
+  }
+  #log div.file {
+    color: #aaffaa;
     cursor: pointer;
     text-decoration: underline;
   }
-  #controls {
-    display: flex;
-    gap: 1em;
-    flex-wrap: wrap;
-  }
-  button, input[type="file"] {
-    padding: 0.5em 1em;
-    font-size: 1em;
-    background: #333;
-    border: none;
-    color: #eee;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-  #dropzone {
-    border: 2px dashed #555;
+  #progress-bar {
+    width: 600px;
+    max-width: 90vw;
+    margin: 0 auto 20px;
+    height: 16px;
+    background: #222;
     border-radius: 8px;
-    padding: 2em;
-    text-align: center;
-    color: #888;
-    user-select: none;
+    overflow: hidden;
   }
-  #dropzone.dragover {
-    border-color: #56caff;
-    color: #56caff;
-    background: #111a;
+  #progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #7f00ff, #e100ff);
+    transition: width 0.3s ease;
+  }
+  @media (max-width: 640px) {
+    #drop-area, #log, #progress-bar {
+      max-width: 95vw;
+    }
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
 </head>
 <body>
-<header>Fluxis - Minecraft Bedrock Pack Encryptor</header>
-<main>
-  <div id="dropzone">Drag & Drop Minecraft Pack Folder Here or <input type="file" id="folderInput" webkitdirectory directory multiple /></div>
-  <div id="controls">
-    <input type="file" id="keysFileInput" accept=".db,.txt" />
-    <button id="startBtn" disabled>Start Encryption</button>
-  </div>
-  <div id="log"></div>
-</main>
+<header>McEncryptor AES-256-CFB-8</header>
 
-<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<div id="drop-area">
+  <p>Drag & Drop your Minecraft pack folder here or click to select files</p>
+  <input type="file" id="fileElem" webkitdirectory directory multiple />
+  <button id="selectBtn">Select Folder</button>
+</div>
+
+<div id="progress-bar"><div id="progress"></div></div>
+
+<div id="log"></div>
 
 <script>
 (() => {
-  // Config
-  const EXCLUDE = ["manifest.json", "pack_icon.png"];
-  const EXCLUDE_FOLDERS = ["texts"];
+  "use strict";
 
-  // Default key if none found in keys.db
-  const DEFAULT_KEY = "s5s5ejuDru4uchuF2drUFuthaspAbepE";
+  // Constants from your C# code
+  const AES_KEY = "s5s5ejuDru4uchuF2drUFuthaspAbepE"; // 32 chars
+  const AES_IV = "s5s5ejuDru4uchuF"; // 16 chars
 
-  // Globals
-  let keysDb = {}; // { uuid: key }
-  let folderFiles = []; // array of File objects from folder input/dragdrop
-  let manifestJson = null;
-  let manifestUuid = null;
+  // Convert key/iv to WordArray for CryptoJS
+  const keyWA = CryptoJS.enc.Utf8.parse(AES_KEY);
+  const ivWA = CryptoJS.enc.Utf8.parse(AES_IV);
 
-  const logDiv = document.getElementById("log");
-  const startBtn = document.getElementById("startBtn");
-  const keysFileInput = document.getElementById("keysFileInput");
-  const folderInput = document.getElementById("folderInput");
-  const dropzone = document.getElementById("dropzone");
-
-  // Logging helper
-  function log(msg, filename=null) {
-    if (filename) {
-      const a = document.createElement("a");
-      a.textContent = msg;
-      a.href = "#";
-      a.onclick = (e) => {
-        e.preventDefault();
-        const f = folderFiles.find(f => f.name === filename || f.webkitRelativePath.endsWith(filename));
-        if (f) {
-          f.text().then(text => {
-            const win = window.open();
-            if(win) {
-              win.document.body.style.background = "#111";
-              win.document.body.style.color = "#eee";
-              win.document.body.style.whiteSpace = "pre-wrap";
-              win.document.title = filename;
-              win.document.body.textContent = text;
-            } else {
-              alert("Pop-up blocked. Please allow pop-ups to view file.");
-            }
-          });
-        } else {
-          alert("File not found in current pack.");
-        }
-      };
-      logDiv.appendChild(a);
-      logDiv.appendChild(document.createTextNode("\n"));
-    } else {
-      logDiv.appendChild(document.createTextNode(msg + "\n"));
-    }
-    logDiv.scrollTop = logDiv.scrollHeight;
-  }
-
-  // Parse keys.db text into keysDb object
-  async function parseKeysDb(file) {
-    const text = await file.text();
-    keysDb = {};
-    const lines = text.split(/\r?\n/);
-    for (const line of lines) {
-      if (!line.trim() || !line.includes("=")) continue;
-      const [uuid, key] = line.trim().split("=");
-      if (uuid && key && key.length === 32) {
-        keysDb[uuid] = key;
-      }
-    }
-    log(`Loaded ${Object.keys(keysDb).length} keys from keys.db`);
-  }
-
-  // Read manifest.json, parse UUID
-  async function readManifest() {
-    const manifestFile = folderFiles.find(f => f.name === "manifest.json" || f.webkitRelativePath.endsWith("/manifest.json"));
-    if (!manifestFile) throw new Error("manifest.json not found in the folder");
-    const jsonText = await manifestFile.text();
-    manifestJson = JSON.parse(jsonText);
-    manifestUuid = manifestJson.header && manifestJson.header.uuid;
-    if (!manifestUuid) throw new Error("UUID not found in manifest.json header");
-    log(`Found manifest UUID: ${manifestUuid}`);
-  }
-
-  // Utility: filter out files we shouldn't encrypt
-  function shouldEncrypt(relPath) {
-    const lower = relPath.toLowerCase();
-    for (const excl of EXCLUDE) {
-      if (lower.endsWith(excl)) return false;
-    }
-    for (const exclFolder of EXCLUDE_FOLDERS) {
-      if (lower.includes(`/${exclFolder.toLowerCase()}/`) || lower.startsWith(exclFolder.toLowerCase() + "/")) return false;
-    }
-    return true;
-  }
-
-  // AES-256-CFB encrypt with CryptoJS (using CTR mode as approximation)
-  function aes256CfbEncrypt(keyStr, dataBytes) {
-    const key = CryptoJS.enc.Utf8.parse(keyStr);
-    const iv = CryptoJS.enc.Utf8.parse(keyStr.substr(0,16));
-    const wordArray = CryptoJS.lib.WordArray.create(dataBytes);
-    const encrypted = CryptoJS.AES.encrypt(wordArray, key, {
-      iv: iv,
-      mode: CryptoJS.mode.CTR,
-      padding: CryptoJS.pad.NoPadding
+  // Helper to read file as Uint8Array
+  function readFileAsUint8Array(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(new Uint8Array(fr.result));
+      fr.onerror = reject;
+      fr.readAsArrayBuffer(file);
     });
-    // Convert base64 ciphertext to Uint8Array
-    const base64str = encrypted.toString();
-    const parsedWords = CryptoJS.enc.Base64.parse(base64str);
-    const words = parsedWords.words;
-    const sigBytes = parsedWords.sigBytes;
-    const result = new Uint8Array(sigBytes);
-    let i = 0;
-    for (let w=0; w < words.length; w++) {
-      if (i >= sigBytes) break;
-      result[i++] = (words[w] >>> 24) & 0xFF;
-      if (i >= sigBytes) break;
-      result[i++] = (words[w] >>> 16) & 0xFF;
-      if (i >= sigBytes) break;
-      result[i++] = (words[w] >>> 8) & 0xFF;
-      if (i >= sigBytes) break;
-      result[i++] = words[w] & 0xFF;
-    }
-    return result;
   }
 
-  // Generate random 32-char alphanumeric key
-  function generateKey() {
+  // Generate random 32-char alphanumeric key for contents.json entries
+  function generateRandomKey() {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
     let key = "";
-    for(let i=0; i<32; i++) {
-      key += chars.charAt(Math.floor(Math.random()*chars.length));
+    for (let i = 0; i < 32; i++) {
+      key += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return key;
   }
 
-  // Build relative path for a File object
-  function getRelPath(file) {
-    return file.webkitRelativePath || file.name;
+  // Encode Uint8Array to base64 string
+  function base64FromUint8(arr) {
+    return btoa(String.fromCharCode(...arr));
   }
 
-  async function encryptPack() {
-    log("Starting encryption...");
+  // Decode base64 to Uint8Array
+  function uint8FromBase64(str) {
+    const binary = atob(str);
+    const len = binary.length;
+    const arr = new Uint8Array(len);
+    for(let i = 0; i < len; i++) {
+      arr[i] = binary.charCodeAt(i);
+    }
+    return arr;
+  }
 
-    let contentKey = keysDb[manifestUuid] || DEFAULT_KEY;
-    log(`Using content key: ${contentKey}`);
+  // AES-256-CFB-8 encrypt using CryptoJS AES-ECB primitive + manual CFB8 feedback
+  function aes256cfb8Encrypt(plaintextBytes, keyWA, ivWA) {
+    // Shift register init (copy IV)
+    let shiftRegister = ivWA.words.slice(0);
 
-    const zip = new JSZip();
-
-    const contentsJson = {
-      version: 1,
-      content: []
+    // AES ECB encrypt function from CryptoJS
+    const ecbEncrypt = (blockWords) => {
+      const block = CryptoJS.lib.WordArray.create(blockWords, 16);
+      const encrypted = CryptoJS.AES.encrypt(block, keyWA, {mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.NoPadding});
+      return encrypted.ciphertext.words;
     };
 
-    if (folderFiles.length === 0) {
-      log("No files loaded!");
-      return;
+    const blockSize = 16; // AES block size bytes
+    const ptLen = plaintextBytes.length;
+    let ciphertext = new Uint8Array(ptLen);
+
+    // Convert shiftRegister to Uint8Array for easy shifting
+    function wordsToBytes(words) {
+      const bytes = new Uint8Array(words.length * 4);
+      for(let i = 0; i < words.length; i++) {
+        bytes[i*4] = (words[i] >>> 24) & 0xff;
+        bytes[i*4+1] = (words[i] >>> 16) & 0xff;
+        bytes[i*4+2] = (words[i] >>> 8) & 0xff;
+        bytes[i*4+3] = words[i] & 0xff;
+      }
+      return bytes;
+    }
+    function bytesToWords(bytes) {
+      const words = [];
+      for(let i = 0; i < bytes.length; i += 4) {
+        words.push(
+          (bytes[i] << 24) | (bytes[i+1] << 16) | (bytes[i+2] << 8) | bytes[i+3]
+        );
+      }
+      return words;
     }
 
-    // Determine root folder inside dropped folder files for proper zip structure
-    let firstRel = getRelPath(folderFiles[0]).replace(/\\/g, "/");
-    let rootFolderName = firstRel.includes("/") ? firstRel.split("/")[0] : "";
+    let shiftBytes = wordsToBytes(shiftRegister);
 
-    for (const file of folderFiles) {
-      const relPathRaw = getRelPath(file).replace(/\\/g, "/");
-      // Remove root folder prefix for inside ZIP paths
-      const insidePackRelPath = rootFolderName ? relPathRaw.startsWith(rootFolderName + "/")
-        ? relPathRaw.slice(rootFolderName.length + 1)
-        : relPathRaw : relPathRaw;
+    for (let i = 0; i < ptLen; i++) {
+      // Encrypt current shift register (ECB)
+      let encryptedSRWords = ecbEncrypt(bytesToWords(shiftBytes));
+      let encryptedSRBytes = wordsToBytes(encryptedSRWords);
 
-      const isDir = file.type === "" && relPathRaw.endsWith("/");
-      const encryptThis = shouldEncrypt(relPathRaw);
+      // Take first byte of encrypted shift register as key byte
+      let keyByte = encryptedSRBytes[0];
 
-      if (isDir) {
-        contentsJson.content.push({ path: insidePackRelPath + "/" });
-        log(`Directory: ${insidePackRelPath}/ (not encrypted)`);
+      // XOR with plaintext byte
+      let ctByte = plaintextBytes[i] ^ keyByte;
+      ciphertext[i] = ctByte;
+
+      // Shift left shift register by 1 byte and append ciphertext byte
+      shiftBytes.copyWithin(0, 1);
+      shiftBytes[blockSize - 1] = ctByte;
+    }
+
+    return ciphertext;
+  }
+
+  // The decrypt function is identical in CFB mode except feedback uses ciphertext, so
+  // to decrypt ciphertext, you use same logic but XOR ciphertext with encrypted shift register,
+  // then shift register shifts by ciphertext bytes.
+  function aes256cfb8Decrypt(ciphertextBytes, keyWA, ivWA) {
+    // Shift register init (copy IV)
+    let shiftRegister = ivWA.words.slice(0);
+
+    const ecbEncrypt = (blockWords) => {
+      const block = CryptoJS.lib.WordArray.create(blockWords, 16);
+      const encrypted = CryptoJS.AES.encrypt(block, keyWA, {mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.NoPadding});
+      return encrypted.ciphertext.words;
+    };
+
+    const blockSize = 16;
+    const ctLen = ciphertextBytes.length;
+    let plaintext = new Uint8Array(ctLen);
+
+    function wordsToBytes(words) {
+      const bytes = new Uint8Array(words.length * 4);
+      for(let i = 0; i < words.length; i++) {
+        bytes[i*4] = (words[i] >>> 24) & 0xff;
+        bytes[i*4+1] = (words[i] >>> 16) & 0xff;
+        bytes[i*4+2] = (words[i] >>> 8) & 0xff;
+        bytes[i*4+3] = words[i] & 0xff;
+      }
+      return bytes;
+    }
+    function bytesToWords(bytes) {
+      const words = [];
+      for(let i = 0; i < bytes.length; i += 4) {
+        words.push(
+          (bytes[i] << 24) | (bytes[i+1] << 16) | (bytes[i+2] << 8) | bytes[i+3]
+        );
+      }
+      return words;
+    }
+
+    let shiftBytes = wordsToBytes(shiftRegister);
+
+    for(let i = 0; i < ctLen; i++) {
+      let encryptedSRWords = ecbEncrypt(bytesToWords(shiftBytes));
+      let encryptedSRBytes = wordsToBytes(encryptedSRWords);
+
+      let keyByte = encryptedSRBytes[0];
+      let ptByte = ciphertextBytes[i] ^ keyByte;
+      plaintext[i] = ptByte;
+
+      shiftBytes.copyWithin(0, 1);
+      shiftBytes[blockSize - 1] = ciphertextBytes[i];
+    }
+
+    return plaintext;
+  }
+
+  // File exclusion rules
+  // skip encrypting manifest.json, pack_icon.png, any file inside texts/
+  function shouldEncrypt(filePath) {
+    const lower = filePath.toLowerCase().replace(/\\/g, '/');
+    if(lower.endsWith("manifest.json")) return false;
+    if(lower.endsWith("pack_icon.png")) return false;
+    if(lower.includes("/texts/")) return false;
+    return true;
+  }
+
+  // Generates contents.json structure
+  // input: array of {path: string, encrypted: bool, key: string|null, content: Uint8Array}
+  function generateContentsJson(files) {
+    // version=1 always
+    // content array of entries:
+    // if encrypted: { "key": "keystring", "path": "relative/path" }
+    // else: { "path": "relative/path" }
+
+    const content = [];
+    for(const file of files) {
+      if(file.encrypted) {
+        content.push({ key: file.key, path: file.path });
+      } else {
+        content.push({ path: file.path });
+      }
+    }
+    return {
+      version: 1,
+      content
+    };
+  }
+
+  // Generates signatures.json (flat array [{path, hash}])
+  // Hash is SHA256 of encrypted file content in base64
+  async function generateSignaturesJson(files) {
+    const signatures = [];
+    for (const file of files) {
+      const data = file.encrypted ? file.encryptedData : file.content;
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = new Uint8Array(hashBuffer);
+      const hashB64 = btoa(String.fromCharCode(...hashArray));
+      signatures.push({ path: file.path, hash: hashB64 });
+    }
+    return signatures;
+  }
+
+  // Encrypt and package everything into a ZIP, then prompt download
+  async function processFiles(fileList) {
+    logClear();
+    log(`Processing ${fileList.length} files...`);
+
+    // Map relative paths => files & content
+    // fileList: array of File objects with webkitRelativePath or relativePath
+    // fallback: build relative path from file.name only if relative path missing
+    // convert File -> {path, content Uint8Array, encrypted, key (if encrypted), encryptedData}
+
+    const filesData = [];
+    const usedKeys = new Set();
+
+    for (const file of fileList) {
+      const relativePath = file.webkitRelativePath || file.relativePath || file.name;
+      const lowerRel = relativePath.toLowerCase().replace(/\\/g, '/');
+
+      if (file.size === 0) {
+        log(`Skipping empty file: ${relativePath}`);
         continue;
       }
 
-      const data = new Uint8Array(await file.arrayBuffer());
+      const content = new Uint8Array(await readFileAsUint8Array(file));
 
-      if (encryptThis) {
-        const key = generateKey();
-        const encryptedData = aes256CfbEncrypt(key, data);
-        zip.file(`${rootFolderName}/${insidePackRelPath}`, encryptedData);
-        contentsJson.content.push({ path: insidePackRelPath, key });
-        log(`Encrypted file: ${insidePackRelPath} with key ${key}`);
+      if(shouldEncrypt(relativePath)) {
+        // encrypt
+
+        // Generate unique random key (32 chars alnum)
+        let key;
+        do {
+          key = generateRandomKey();
+        } while (usedKeys.has(key));
+        usedKeys.add(key);
+
+        // encrypt content with AES-256-CFB-8
+        const encryptedContent = aes256cfb8Encrypt(content, CryptoJS.enc.Utf8.parse(key), ivWA);
+
+        filesData.push({
+          path: relativePath,
+          content,
+          encrypted: true,
+          key: key,
+          encryptedData: encryptedContent
+        });
+        logFile(relativePath, true);
       } else {
-        zip.file(`${rootFolderName}/${insidePackRelPath}`, data);
-        contentsJson.content.push({ path: insidePackRelPath });
-        log(`Skipped encryption for: ${insidePackRelPath}`);
+        // don't encrypt
+        filesData.push({
+          path: relativePath,
+          content,
+          encrypted: false,
+          key: null,
+          encryptedData: null
+        });
+        logFile(relativePath, false);
       }
     }
 
-    // Add contents.json to content list with no key
-    contentsJson.content.push({ path: "contents.json" });
+    // Generate contents.json (with keys for encrypted files)
+    const contentsJson = generateContentsJson(filesData);
+    const contentsJsonStr = JSON.stringify(contentsJson, null, 2);
+    const contentsJsonBytes = new TextEncoder().encode(contentsJsonStr);
 
-    // Encrypt contents.json with the shared contentKey
-    const contentsJsonString = JSON.stringify(contentsJson, null, 2);
-    const contentsJsonBytes = new TextEncoder().encode(contentsJsonString);
-    const encryptedContentsJson = aes256CfbEncrypt(contentKey, contentsJsonBytes);
-    zip.file("contents.json", encryptedContentsJson);
+    // Encrypt contents.json with AES-256-CFB-8 with your constant key
+    const contentsEncryptedBytes = aes256cfb8Encrypt(contentsJsonBytes, keyWA, ivWA);
 
-    log("Added encrypted contents.json at ZIP root");
+    // Add contents.json to filesData (unencrypted path, encrypted content, key=null)
+    filesData.push({
+      path: "contents.json",
+      content: contentsJsonBytes,
+      encrypted: true,
+      key: null,
+      encryptedData: contentsEncryptedBytes
+    });
 
-    log("Generating zip...");
-    const contentZip = await zip.generateAsync({ type: "blob" });
+    // Generate signatures.json
+    const signaturesJson = await generateSignaturesJson(filesData);
+    const signaturesJsonStr = JSON.stringify(signaturesJson, null, 2);
+    const signaturesJsonBytes = new TextEncoder().encode(signaturesJsonStr);
 
-    const dlLink = document.createElement("a");
-    dlLink.href = URL.createObjectURL(contentZip);
-    dlLink.download = `${manifestUuid || "pack"}_encrypted.zip`;
-    dlLink.textContent = "Download Encrypted Pack ZIP";
-    dlLink.style.display = "block";
-    dlLink.style.marginTop = "1em";
+    // Encrypt signatures.json with AES-256-CFB-8 with your constant key
+    const signaturesEncryptedBytes = aes256cfb8Encrypt(signaturesJsonBytes, keyWA, ivWA);
 
-    document.body.appendChild(dlLink);
+    filesData.push({
+      path: "signatures.json",
+      content: signaturesJsonBytes,
+      encrypted: true,
+      key: null,
+      encryptedData: signaturesEncryptedBytes
+    });
 
-    log("Encryption complete! Click the download link above.");
-    startBtn.disabled = false;
-  }
+    // Create ZIP file with JSZip
+    const zip = new JSZip();
 
-  // Enable start button only when folder loaded & manifest found
-  function checkReady() {
-    startBtn.disabled = !folderFiles.length || !manifestUuid;
-  }
-
-  // Load folder files on drag/drop or file input
-  async function loadFolderFiles(filesList) {
-    folderFiles = [];
-    for (const file of filesList) {
-      folderFiles.push(file);
+    for(const file of filesData) {
+      if(file.encrypted) {
+        zip.file(file.path, file.encryptedData);
+      } else {
+        zip.file(file.path, file.content);
+      }
     }
-    log(`Loaded ${folderFiles.length} files from folder.`);
 
-    try {
-      await readManifest();
-      checkReady();
-    } catch (ex) {
-      log("Error reading manifest.json: " + ex.message);
-      manifestUuid = null;
-      checkReady();
-    }
+    log("Generating ZIP...");
+    const blob = await zip.generateAsync({type: "blob"});
+    log("ZIP generated!");
+
+    // Download file
+    const now = new Date();
+    const filename = `encrypted_pack_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,"0")}${now.getDate().toString().padStart(2,"0")}.zip`;
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    log("Done!");
   }
 
-  // Drag & drop handlers
-  dropzone.addEventListener("dragover", e => {
+  // Console log functions
+  const logEl = document.getElementById("log");
+  function log(msg) {
+    const div = document.createElement("div");
+    div.textContent = msg;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function logFile(filename, encrypted) {
+    const div = document.createElement("div");
+    div.textContent = filename + (encrypted ? " (encrypted)" : " (skipped)");
+    if(encrypted) div.classList.add("file");
+    div.title = "Click to open file location (if supported)";
+    div.onclick = () => {
+      alert(`File: ${filename}`);
+      // No direct file open possible in browser sandbox
+    };
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function logClear() {
+    logEl.innerHTML = "";
+  }
+
+  // Progress bar
+  const progressBar = document.getElementById("progress");
+  function setProgress(percent) {
+    progressBar.style.width = percent + "%";
+  }
+
+  // UI elements
+  const dropArea = document.getElementById("drop-area");
+  const fileElem = document.getElementById("fileElem");
+  const selectBtn = document.getElementById("selectBtn");
+
+  selectBtn.onclick = () => fileElem.click();
+
+  dropArea.addEventListener("dragenter", e => {
     e.preventDefault();
-    dropzone.classList.add("dragover");
+    dropArea.classList.add("hover");
   });
-  dropzone.addEventListener("dragleave", e => {
-    dropzone.classList.remove("dragover");
-  });
-  dropzone.addEventListener("drop", e => {
+  dropArea.addEventListener("dragover", e => {
     e.preventDefault();
-    dropzone.classList.remove("dragover");
-    if (e.dataTransfer.items) {
-      const files = [];
-      const traverseFileTree = async (item, path = "") => {
-        if (item.isFile) {
-          const file = await new Promise(resolve => item.file(resolve));
-          file.webkitRelativePath = path + file.name;
-          files.push(file);
-        } else if (item.isDirectory) {
-          const dirReader = item.createReader();
-          let entries = await new Promise(res => dirReader.readEntries(res));
-          for (const entry of entries) {
-            await traverseFileTree(entry, path + item.name + "/");
-          }
-        }
-      };
-
-      const items = [...e.dataTransfer.items];
-      Promise.all(items.map(item => traverseFileTree(item.webkitGetAsEntry()))).then(() => {
-        loadFolderFiles(files);
-      });
-    } else {
-      loadFolderFiles(e.dataTransfer.files);
-    }
-  });
-
-  // File input change handlers
-  folderInput.addEventListener("change", e => {
-    loadFolderFiles(e.target.files);
-  });
-
-  keysFileInput.addEventListener("change", e => {
-    const f = e.target.files[0];
-    if (!f) return;
-    parseKeysDb(f);
-  });
-
-  startBtn.addEventListener("click", () => {
-    startBtn.disabled = true;
-    encryptPack();
-  });
-
-  log("Ready. Drag & drop a Minecraft pack folder or select folder using the picker.");
-  log("Load a keys.db file if you want to use custom keys.");
-
-})();
-</script>
-</body>
-</html>
+   
