@@ -92,10 +92,12 @@
   const EXCLUDE = ["manifest.json", "pack_icon.png"];
   const EXCLUDE_FOLDERS = ["texts"];
 
+  // Default key if none found in keys.db
   const DEFAULT_KEY = "s5s5ejuDru4uchuF2drUFuthaspAbepE";
 
+  // Globals
   let keysDb = {}; // { uuid: key }
-  let folderFiles = [];
+  let folderFiles = []; // array of File objects from folder input/dragdrop
   let manifestJson = null;
   let manifestUuid = null;
 
@@ -105,6 +107,7 @@
   const folderInput = document.getElementById("folderInput");
   const dropzone = document.getElementById("dropzone");
 
+  // Logging helper
   function log(msg, filename=null) {
     if (filename) {
       const a = document.createElement("a");
@@ -138,6 +141,7 @@
     logDiv.scrollTop = logDiv.scrollHeight;
   }
 
+  // Parse keys.db text into keysDb object
   async function parseKeysDb(file) {
     const text = await file.text();
     keysDb = {};
@@ -152,6 +156,7 @@
     log(`Loaded ${Object.keys(keysDb).length} keys from keys.db`);
   }
 
+  // Read manifest.json, parse UUID
   async function readManifest() {
     const manifestFile = folderFiles.find(f => f.name === "manifest.json" || f.webkitRelativePath.endsWith("/manifest.json"));
     if (!manifestFile) throw new Error("manifest.json not found in the folder");
@@ -162,6 +167,7 @@
     log(`Found manifest UUID: ${manifestUuid}`);
   }
 
+  // Utility: filter out files we shouldn't encrypt
   function shouldEncrypt(relPath) {
     const lower = relPath.toLowerCase();
     for (const excl of EXCLUDE) {
@@ -173,6 +179,7 @@
     return true;
   }
 
+  // AES-256-CFB encrypt with CryptoJS (using CTR mode as approximation)
   function aes256CfbEncrypt(keyStr, dataBytes) {
     const key = CryptoJS.enc.Utf8.parse(keyStr);
     const iv = CryptoJS.enc.Utf8.parse(keyStr.substr(0,16));
@@ -182,14 +189,27 @@
       mode: CryptoJS.mode.CTR,
       padding: CryptoJS.pad.NoPadding
     });
-    return Uint8Array.from(CryptoJS.enc.Base64.parse(encrypted.toString()).words.flatMap(w => [
-      (w >> 24) & 0xFF,
-      (w >> 16) & 0xFF,
-      (w >> 8) & 0xFF,
-      w & 0xFF
-    ]).slice(0, dataBytes.length));
+    // Convert base64 ciphertext to Uint8Array
+    const base64str = encrypted.toString();
+    const parsedWords = CryptoJS.enc.Base64.parse(base64str);
+    const words = parsedWords.words;
+    const sigBytes = parsedWords.sigBytes;
+    const result = new Uint8Array(sigBytes);
+    let i = 0;
+    for (let w=0; w < words.length; w++) {
+      if (i >= sigBytes) break;
+      result[i++] = (words[w] >>> 24) & 0xFF;
+      if (i >= sigBytes) break;
+      result[i++] = (words[w] >>> 16) & 0xFF;
+      if (i >= sigBytes) break;
+      result[i++] = (words[w] >>> 8) & 0xFF;
+      if (i >= sigBytes) break;
+      result[i++] = words[w] & 0xFF;
+    }
+    return result;
   }
 
+  // Generate random 32-char alphanumeric key
   function generateKey() {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
     let key = "";
@@ -199,6 +219,7 @@
     return key;
   }
 
+  // Build relative path for a File object
   function getRelPath(file) {
     return file.webkitRelativePath || file.name;
   }
@@ -221,51 +242,51 @@
       return;
     }
 
-    // Determine root folder name from first file
+    // Determine root folder inside dropped folder files for proper zip structure
     let firstRel = getRelPath(folderFiles[0]).replace(/\\/g, "/");
-    let rootFolderName = firstRel.includes("/") ? firstRel.split("/")[0] : "packroot";
-    log(`Root folder in ZIP will be: ${rootFolderName}`);
+    let rootFolderName = firstRel.includes("/") ? firstRel.split("/")[0] : "";
 
     for (const file of folderFiles) {
       const relPathRaw = getRelPath(file).replace(/\\/g, "/");
-
-      // Strip root folder prefix for inside-pack path
-      const insidePackRelPath = relPathRaw.startsWith(rootFolderName + "/")
+      // Remove root folder prefix for inside ZIP paths
+      const insidePackRelPath = rootFolderName ? relPathRaw.startsWith(rootFolderName + "/")
         ? relPathRaw.slice(rootFolderName.length + 1)
-        : relPathRaw;
+        : relPathRaw : relPathRaw;
 
-      // Detect directories (type="" and ends with / in relative path)
       const isDir = file.type === "" && relPathRaw.endsWith("/");
       const encryptThis = shouldEncrypt(relPathRaw);
 
       if (isDir) {
-        // Directories are added as entries with trailing slash (no encryption)
         contentsJson.content.push({ path: insidePackRelPath + "/" });
         log(`Directory: ${insidePackRelPath}/ (not encrypted)`);
         continue;
       }
 
-      // Read file bytes
       const data = new Uint8Array(await file.arrayBuffer());
 
       if (encryptThis) {
         const key = generateKey();
         const encryptedData = aes256CfbEncrypt(key, data);
-        // Add encrypted file inside root folder
         zip.file(`${rootFolderName}/${insidePackRelPath}`, encryptedData);
         contentsJson.content.push({ path: insidePackRelPath, key });
         log(`Encrypted file: ${insidePackRelPath} with key ${key}`);
       } else {
-        // Add plain file inside root folder
         zip.file(`${rootFolderName}/${insidePackRelPath}`, data);
         contentsJson.content.push({ path: insidePackRelPath });
         log(`Skipped encryption for: ${insidePackRelPath}`);
       }
     }
 
-    // Add contents.json at ZIP root (no prefix)
-    zip.file("contents.json", JSON.stringify(contentsJson, null, 2));
-    log("Added contents.json at ZIP root");
+    // Add contents.json to content list with no key
+    contentsJson.content.push({ path: "contents.json" });
+
+    // Encrypt contents.json with the shared contentKey
+    const contentsJsonString = JSON.stringify(contentsJson, null, 2);
+    const contentsJsonBytes = new TextEncoder().encode(contentsJsonString);
+    const encryptedContentsJson = aes256CfbEncrypt(contentKey, contentsJsonBytes);
+    zip.file("contents.json", encryptedContentsJson);
+
+    log("Added encrypted contents.json at ZIP root");
 
     log("Generating zip...");
     const contentZip = await zip.generateAsync({ type: "blob" });
@@ -283,10 +304,12 @@
     startBtn.disabled = false;
   }
 
+  // Enable start button only when folder loaded & manifest found
   function checkReady() {
     startBtn.disabled = !folderFiles.length || !manifestUuid;
   }
 
+  // Load folder files on drag/drop or file input
   async function loadFolderFiles(filesList) {
     folderFiles = [];
     for (const file of filesList) {
@@ -304,6 +327,7 @@
     }
   }
 
+  // Drag & drop handlers
   dropzone.addEventListener("dragover", e => {
     e.preventDefault();
     dropzone.classList.add("dragover");
@@ -339,6 +363,7 @@
     }
   });
 
+  // File input change handlers
   folderInput.addEventListener("change", e => {
     loadFolderFiles(e.target.files);
   });
