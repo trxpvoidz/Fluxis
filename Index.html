@@ -1,199 +1,239 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Fluxis Encryptor</title>
-  <style>
-    body {
-      background: #0a0a0a;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    h1 {
-      font-size: 2em;
-      background: linear-gradient(90deg, #6af, #a6f);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 10px #6af;
-    }
-    #dropzone {
-      border: 2px dashed #aaa;
-      padding: 40px;
-      margin: 20px;
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    input[type="checkbox"] {
-      margin-right: 8px;
-    }
-    #manifestPreview {
-      margin: 10px auto;
-      white-space: pre-wrap;
-      max-width: 600px;
-      background: #111;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 0.85em;
-    }
-    progress {
-      width: 80%;
-      margin-top: 10px;
-    }
-    #status {
-      margin-top: 8px;
-      font-size: 0.9em;
-      color: #aaa;
-    }
-    button {
-      margin-top: 12px;
-      background: #222;
-      color: white;
-      border: 1px solid #555;
-      padding: 8px 16px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #333;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fluxis</title>
+<style>
+  body {
+    background: #111;
+    color: #fff;
+    font-family: sans-serif;
+    text-align: center;
+    padding: 20px;
+  }
+  #dropzone {
+    margin: 20px auto;
+    border: 3px dashed #888;
+    border-radius: 10px;
+    width: 80%;
+    max-width: 600px;
+    height: 200px;
+    line-height: 200px;
+    color: #666;
+    font-size: 24px;
+    user-select: none;
+  }
+  #dropzone.dragover {
+    border-color: #0f0;
+    color: #0f0;
+    background: #222;
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  pre {
+    background: #222;
+    padding: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+    text-align: left;
+    font-size: 14px;
+    border-radius: 6px;
+    white-space: pre-wrap;
+  }
+</style>
 </head>
 <body>
-  <h1>Fluxis Pack Encryptor</h1>
-  <div id="dropzone">Drop your Minecraft pack folder here<br/>or tap to select on mobile</div>
-  <input type="file" id="filePicker" webkitdirectory directory multiple hidden />
-  <label><input type="checkbox" id="backupToggle" checked>Enable Backup</label><br/>
-  <label><input type="checkbox" id="dontEncrypt">Don't Encrypt (for testing)</label>
-  <pre id="manifestPreview"></pre>
-  <progress id="progressBar" value="0" max="100"></progress>
-  <div id="status"></div>
-  <button onclick="startEncryption()">Start Encryption</button>
 
-  <script>
-    const key = new TextEncoder().encode('s5s5ejuDru4uchuF2drUFuthaspAbepE');
-    const iv = new TextEncoder().encode('s5s5ejuDru4uchuF');
-    const dropzone = document.getElementById('dropzone');
-    const filePicker = document.getElementById('filePicker');
-    let files = [];
+<h1>Fluxis</h1>
 
-    dropzone.onclick = () => filePicker.click();
-    filePicker.onchange = (e) => {
-      files = [...e.target.files];
-      displayManifest(files);
-    };
+<div id="dropzone">Drag & Drop your skin pack files here</div>
 
-    dropzone.ondragover = (e) => {
-      e.preventDefault();
-      dropzone.style.borderColor = "#6af";
-    };
-    dropzone.ondragleave = () => {
-      dropzone.style.borderColor = "#aaa";
-    };
-    dropzone.ondrop = (e) => {
-      e.preventDefault();
-      dropzone.style.borderColor = "#aaa";
-      files = [...e.dataTransfer.files];
-      displayManifest(files);
-    };
+<button id="generateBtn" disabled>Generate & Encrypt JSON Files</button>
 
-    function displayManifest(fileList) {
-      const manifestFile = fileList.find(f => f.webkitRelativePath.endsWith('manifest.json'));
-      if (!manifestFile) {
-        document.getElementById('manifestPreview').textContent = '❌ No manifest.json found.';
-        return;
-      }
-      manifestFile.text().then(txt => {
-        document.getElementById('manifestPreview').textContent = txt;
-      });
+<h2>Generated JSON Preview (unencrypted)</h2>
+<pre id="previewContents"></pre>
+<pre id="previewSignatures"></pre>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script>
+(() => {
+  const keyStr = "s5s5ejuDru4uchuF2drUFuthaspAbepE";
+  const ivStr = "s5s5ejuDru4uchuF";
+
+  const key = CryptoJS.enc.Utf8.parse(keyStr);
+  const iv = CryptoJS.enc.Utf8.parse(ivStr);
+
+  const dropzone = document.getElementById("dropzone");
+  const generateBtn = document.getElementById("generateBtn");
+  const previewContents = document.getElementById("previewContents");
+  const previewSignatures = document.getElementById("previewSignatures");
+
+  let filesMap = new Map();
+
+  dropzone.addEventListener("dragover", e => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+
+  dropzone.addEventListener("dragleave", e => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+  });
+
+  dropzone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+
+    filesMap.clear();
+
+    const items = e.dataTransfer.items;
+
+    if (!items) {
+      alert("Drag and drop not supported in this browser");
+      return;
     }
 
-    async function startEncryption() {
-      if (!files.length) return alert("Drop or select a pack folder first.");
-      const dontEncrypt = document.getElementById('dontEncrypt').checked;
-      const backupEnabled = document.getElementById('backupToggle').checked;
+    let filePromises = [];
 
-      const zip = new JSZip();
-      const contents = [];
-      const progressBar = document.getElementById('progressBar');
-      const status = document.getElementById('status');
-
-      const manifestFile = files.find(f => f.webkitRelativePath.endsWith('manifest.json'));
-      if (!manifestFile) return alert("No manifest.json found.");
-
-      const total = files.length;
-      let processed = 0;
-
-      for (const file of files) {
-        const relPath = file.webkitRelativePath.split('/').slice(1).join('/');
-        const arrayBuffer = await file.arrayBuffer();
-        let data = new Uint8Array(arrayBuffer);
-
-        if (!dontEncrypt) {
-          data = await aesEncrypt(data, key, iv);
+    const traverseFileTree = (item, path = "") => {
+      return new Promise((resolve) => {
+        if (item.isFile) {
+          item.file(file => {
+            filesMap.set(path + file.name, file);
+            resolve();
+          });
+        } else if (item.isDirectory) {
+          const dirReader = item.createReader();
+          dirReader.readEntries(entries => {
+            Promise.all(entries.map(entry => traverseFileTree(entry, path + item.name + "/"))).then(() => resolve());
+          });
+        } else {
+          resolve();
         }
+      });
+    };
 
-        zip.file(relPath, data);
+    const itemPromises = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i].webkitGetAsEntry();
+      if (item) {
+        itemPromises.push(traverseFileTree(item));
+      }
+    }
 
-        const hashBuffer = await crypto.subtle.digest("SHA-1", data);
-        const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join("");
+    Promise.all(itemPromises).then(() => {
+      if (filesMap.size === 0) {
+        alert("No files detected");
+        generateBtn.disabled = true;
+      } else {
+        generateBtn.disabled = false;
+        alert(`Loaded ${filesMap.size} files`);
+      }
+    });
+  });
 
-        contents.push({
-          path: relPath.replace(/\\/g, '/'),
-          hash: hash,
-          length: data.length
-        });
+  function generateContentsJson(filesMap) {
+    function randomKey() {
+      const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let res = "";
+      for (let i = 0; i < 32; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return res;
+    }
 
-        processed++;
-        progressBar.value = Math.round((processed / total) * 100);
-        status.textContent = `Encrypting: ${relPath}`;
+    const contentArr = [];
+    const paths = Array.from(filesMap.keys()).sort();
 
-        if (backupEnabled && processed === Math.floor(total / 2)) {
-          await new Promise(res => setTimeout(res, 100)); // simulate pause
-          const confirmBackup = confirm("Create backup now?");
-          if (confirmBackup) {
-            saveBackup(files);
-          }
-        }
+    for (const path of paths) {
+      const lower = path.toLowerCase();
+
+      if (lower.endsWith("/")) {
+        contentArr.push({ path: path });
+        continue;
       }
 
-      zip.file("contents.json", JSON.stringify({ files: contents }, null, 2));
-      const sig = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify({ files: contents })));
-      zip.file("signature.json", JSON.stringify({ signature: Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('') }, null, 2));
-
-      zip.generateAsync({ type: "blob" }).then(blob => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "encrypted_pack.zip";
-        a.click();
-        status.textContent = "✅ Done!";
-      });
-    }
-
-    async function aesEncrypt(data, key, iv) {
-      const cryptoKey = await crypto.subtle.importKey("raw", key, { name: "AES-CBC" }, false, ["encrypt"]);
-      const paddedLength = Math.ceil(data.length / 16) * 16;
-      const padded = new Uint8Array(paddedLength);
-      padded.set(data);
-      const encrypted = await crypto.subtle.encrypt({ name: "AES-CBC", iv }, cryptoKey, padded);
-      return new Uint8Array(encrypted);
-    }
-
-    function saveBackup(fileList) {
-      const zip = new JSZip();
-      for (const file of fileList) {
-        const relPath = file.webkitRelativePath.split('/').slice(1).join('/');
-        zip.file(relPath, file);
+      if (lower === "manifest.json") {
+        contentArr.push({ path: path });
+        continue;
       }
-      zip.generateAsync({ type: "blob" }).then(blob => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "backup.zip";
-        a.click();
-      });
+
+      const key = randomKey();
+      contentArr.push({ key, path });
     }
-  </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    return {
+      version: 1,
+      content: contentArr,
+    };
+  }
+
+  async function generateSignaturesJson(filesMap) {
+    const signatureArr = [];
+    const paths = Array.from(filesMap.keys());
+
+    for (const path of paths) {
+      const file = filesMap.get(path);
+      if (!file) continue;
+
+      const hash = await getFileHash(file);
+      signatureArr.push({ path, hash });
+    }
+
+    return signatureArr;
+  }
+
+  async function getFileHash(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const wordArray = CryptoJS.lib.WordArray.create(arrayBuffer);
+    const hash = CryptoJS.SHA256(wordArray);
+    return CryptoJS.enc.Base64.stringify(hash);
+  }
+
+  function encryptString(plaintext) {
+    const encrypted = CryptoJS.AES.encrypt(plaintext, key, { iv: iv, mode: CryptoJS.mode.CFB, padding: CryptoJS.pad.NoPadding });
+    return encrypted.ciphertext.toString(CryptoJS.enc.Base64);
+  }
+
+  function downloadFile(filename, contents) {
+    const blob = new Blob([contents], { type: "application/octet-stream" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  generateBtn.addEventListener("click", async () => {
+    generateBtn.disabled = true;
+
+    const contentsJsonObj = generateContentsJson(filesMap);
+    const contentsJsonStr = JSON.stringify(contentsJsonObj, null, 2);
+
+    const signaturesJsonArr = await generateSignaturesJson(filesMap);
+    const signaturesJsonStr = JSON.stringify(signaturesJsonArr);
+
+    previewContents.textContent = contentsJsonStr;
+    previewSignatures.textContent = signaturesJsonStr;
+
+    const encryptedContents = encryptString(contentsJsonStr);
+    const encryptedSignatures = encryptString(signaturesJsonStr);
+
+    downloadFile("contents.json", encryptedContents);
+    downloadFile("signatures.json", encryptedSignatures);
+
+    alert("Encrypted contents.json and signatures.json downloaded!");
+
+    generateBtn.disabled = false;
+  });
+
+})();
+</script>
 </body>
 </html>
