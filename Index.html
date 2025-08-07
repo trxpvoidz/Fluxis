@@ -1,137 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Fluxis Encryptor</title>
   <style>
     body {
-      background: #0b0b0b;
-      color: white;
+      margin: 0;
+      background: #0e0e0e;
       font-family: 'Segoe UI', sans-serif;
+      color: white;
       text-align: center;
-      padding: 50px;
-      animation: fadeIn 1s ease;
+      padding: 20px;
     }
-
     h1 {
-      font-size: 3em;
-      background: linear-gradient(90deg, #00f0ff, #8a00ff);
+      font-size: 2.5em;
+      background: linear-gradient(90deg, #8f44fd, #00ffff, #ff44cc);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 20px #8a00ff80;
-      animation: pulse 3s infinite alternate;
+      animation: glow 2s infinite alternate;
     }
-
-    input, button {
-      padding: 10px 20px;
-      font-size: 1em;
-      margin: 10px;
-      border-radius: 6px;
-      border: none;
+    @keyframes glow {
+      from { text-shadow: 0 0 5px #8f44fd; }
+      to { text-shadow: 0 0 15px #00ffff; }
     }
-
-    button {
-      background: #8a00ff;
-      color: white;
-      cursor: pointer;
+    #dropzone {
+      border: 2px dashed #444;
+      border-radius: 8px;
+      padding: 40px;
+      margin: 30px auto;
+      width: 60%;
+      background: #1a1a1a;
+      transition: 0.3s ease;
     }
-
-    button:hover {
-      background: #6200c1;
+    #dropzone.dragover {
+      background-color: #222;
+      border-color: #888;
     }
-
-    @keyframes pulse {
-      from { text-shadow: 0 0 10px #8a00ff80; }
-      to { text-shadow: 0 0 30px #00f0ff; }
+    label, input, button {
+      margin: 12px;
+      display: inline-block;
     }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    input[type="file"] {
+      display: none;
+    }
+    #progressBar {
+      width: 80%;
+      height: 16px;
+      margin: 20px auto;
+      background: #333;
+      border-radius: 5px;
+    }
+    #progressBarFill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(to right, #00ffff, #8f44fd);
+      border-radius: 5px;
+      transition: width 0.3s ease;
     }
   </style>
 </head>
 <body>
-  <h1>Fluxis Encryptor</h1>
-  <input type="file" id="packInput" webkitdirectory directory />
-  <br>
-  <button onclick="encryptPack()">Encrypt Pack</button>
-  <pre id="log"></pre>
+  <h1>Fluxis</h1>
+  <p><strong>MCBE Pack Encryptor</strong> — Built to match McTools behavior</p>
+
+  <label><input type="checkbox" id="backupOption" checked> Backup before encrypting</label>
+
+  <div id="dropzone">Drag and drop your pack folder here</div>
+  <div id="progressBar"><div id="progressBarFill"></div></div>
+  <input type="file" id="folderInput" webkitdirectory directory multiple>
+  <br><button onclick="document.getElementById('folderInput').click()">Choose Folder</button>
 
   <script>
-    const keyBase64 = btoa("s5s5ejuDru4uchuF2drUFuthaspAbepE");
-    const ivBase64 = btoa("s5s5ejuDru4uchuF");
+    const key = "s5s5ejuDru4uchuF2drUFuthaspAbepE";
+    const iv = "s5s5ejuDru4uchuF";
 
-    function log(msg) {
-      document.getElementById("log").textContent += msg + "\n";
+    const dropzone = document.getElementById("dropzone");
+    const progress = document.getElementById("progressBarFill");
+
+    dropzone.addEventListener("dragover", e => {
+      e.preventDefault();
+      dropzone.classList.add("dragover");
+    });
+
+    dropzone.addEventListener("dragleave", () => {
+      dropzone.classList.remove("dragover");
+    });
+
+    dropzone.addEventListener("drop", async e => {
+      e.preventDefault();
+      dropzone.classList.remove("dragover");
+      const items = e.dataTransfer.items;
+      const entries = [];
+      for (const item of items) {
+        const entry = item.webkitGetAsEntry?.();
+        if (entry?.isDirectory) {
+          entries.push(entry);
+        }
+      }
+      if (entries.length) {
+        handleFolderDrop(entries[0]);
+      }
+    });
+
+    document.getElementById("folderInput").addEventListener("change", async e => {
+      const files = Array.from(e.target.files);
+      const base = files[0].webkitRelativePath.split("/")[0];
+      await processFiles(files, base);
+    });
+
+    async function handleFolderDrop(entry) {
+      const reader = entry.createReader();
+      let entries = [];
+      let readEntries = () => new Promise(resolve => reader.readEntries(resolve));
+      let batch;
+      do {
+        batch = await readEntries();
+        entries = entries.concat(batch);
+      } while (batch.length);
+      const files = await Promise.all(entries.map(e => new Promise(resolve => e.file(resolve))));
+      const base = entry.name;
+      await processFiles(files, base);
     }
 
-    async function encryptPack() {
-      const input = document.getElementById("packInput");
-      const files = input.files;
-
-      if (!files.length) return log("Select a pack folder first.");
-
-      let fileMap = {};
-      for (let file of files) {
-        fileMap[file.webkitRelativePath] = file;
+    async function processFiles(files, baseFolderName) {
+      progress.style.width = "5%";
+      const fileMap = {};
+      for (const file of files) {
+        fileMap[file.webkitRelativePath || file.name] = file;
       }
 
-      if (!fileMap["manifest.json"]) return log("Missing manifest.json");
+      // Read manifest
+      const manifestPath = Object.keys(fileMap).find(k => k.endsWith("manifest.json"));
+      if (!manifestPath) return alert("manifest.json not found.");
+      const manifest = JSON.parse(await fileMap[manifestPath].text());
+      const uuid = manifest.header.uuid;
 
-      const manifestText = await fileMap["manifest.json"].text();
-      const uuid = JSON.parse(manifestText).header.uuid;
-
-      const encoder = new TextEncoder();
-      const key = await crypto.subtle.importKey("raw", Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0)), {name: "AES-CBC"}, false, ["encrypt"]);
-      const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
-
-      let contents = [];
-      for (let [path, file] of Object.entries(fileMap)) {
-        if (path === "manifest.json") continue;
-        const data = await file.arrayBuffer();
-
-        const encrypted = await crypto.subtle.encrypt({ name: "AES-CBC", iv }, key, data);
-        const hash = await crypto.subtle.digest("SHA-1", data);
-        contents.push({
-          path: path.replace(/\\/g, "/"),
-          key: btoa(String.fromCharCode(...new Uint8Array(hash))),
-          iv: ivBase64,
-          encryptionKey: keyBase64
-        });
-
-        // Replace file in map (simulate encryption)
-        fileMap[path] = new File([encrypted], file.name);
-      }
-
-      // contents.json
-      const contentsJson = JSON.stringify(contents, null, 2);
-      fileMap["contents.json"] = new File([contentsJson], "contents.json");
-
-      // signature.json (fake signature based on uuid, like McTools does)
-      const fakeSig = {
-        "header": { "signature": uuid, "alg": "SHA1withRSA" },
-        "entries": contents.map(x => x.path)
-      };
-      fileMap["signature.json"] = new File([JSON.stringify(fakeSig, null, 2)], "signature.json");
-
-      downloadPack(fileMap);
-    }
-
-    function downloadPack(fileMap) {
-      const zip = new JSZip();
-      for (let [path, file] of Object.entries(fileMap)) {
-        zip.file(path, file);
-      }
-
-      zip.generateAsync({type: "blob"}).then(content => {
+      // Create backup
+      if (document.getElementById("backupOption").checked) {
+        const zip = new JSZip();
+        for (const path in fileMap) {
+          zip.file(path.replace(`${baseFolderName}/`, ""), fileMap[path]);
+        }
+        const backupBlob = await zip.generateAsync({type: "blob"});
+        const backupUrl = URL.createObjectURL(backupBlob);
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(content);
-        a.download = "Encrypted_Pack_Fluxis.mcpack";
+        a.href = backupUrl;
+        a.download = `${baseFolderName}_backup.zip`;
         a.click();
-      });
+        progress.style.width = "15%";
+      }
+
+      // Sign manifest
+      manifest.signature = "Fluxis Signed Manifest";
+      const updatedManifestBlob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
+
+      // Generate contents.json
+      const contents = [];
+      for (const [path, file] of Object.entries(fileMap)) {
+        const arrayBuffer = await file.arrayBuffer();
+        const hash = await crypto.subtle.digest("SHA-1", arrayBuffer);
+        const hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+        contents.push({ file: path.replace(baseFolderName + "/", ""), hash: hashHex });
+      }
+      const contentsBlob = new Blob([JSON.stringify(contents, null, 2)], { type: "application/json" });
+
+      progress.style.width = "50%";
+
+      // Encrypt files using AES-CBC
+      const aesKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "AES-CBC" }, false, ["encrypt"]);
+      const encryptedFiles = {};
+
+      for (const [path, file] of Object.entries(fileMap)) {
+        const ivBytes = new TextEncoder().encode(iv);
+        const encrypted = await crypto.subtle.encrypt({ name: "AES-CBC", iv: ivBytes }, aesKey, await file.arrayBuffer());
+        encryptedFiles[path.replace(baseFolderName + "/", "")] = new Uint8Array(encrypted);
+      }
+
+      progress.style.width = "75%";
+
+      // Create final pack zip
+      const finalZip = new JSZip();
+      for (const [name, data] of Object.entries(encryptedFiles)) {
+        finalZip.file(name, data);
+      }
+      finalZip.file("manifest.json", updatedManifestBlob);
+      finalZip.file("contents.json", contentsBlob);
+      finalZip.file("signature.json", new Blob([JSON.stringify({ signature: "Fluxis Signed", uuid })], { type: "application/json" }));
+
+      const blob = await finalZip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${baseFolderName}_encrypted.mcpack`;
+      a.click();
+
+      progress.style.width = "100%";
     }
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>
