@@ -1,202 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Fluxis Encryptor</title>
   <style>
     body {
-      margin: 0;
-      background: #0e0e0e;
-      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a0a;
       color: white;
+      font-family: 'Segoe UI', sans-serif;
       text-align: center;
       padding: 20px;
     }
     h1 {
       font-size: 2.5em;
-      background: linear-gradient(90deg, #8f44fd, #00ffff, #ff44cc);
+      background: linear-gradient(90deg, #ff00cc, #3333ff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      animation: glow 2s infinite alternate;
+      animation: glow 2s ease-in-out infinite alternate;
     }
     @keyframes glow {
-      from { text-shadow: 0 0 5px #8f44fd; }
-      to { text-shadow: 0 0 15px #00ffff; }
+      from { text-shadow: 0 0 5px #ff00cc; }
+      to { text-shadow: 0 0 20px #3333ff; }
     }
-    #dropzone {
-      border: 2px dashed #444;
-      border-radius: 8px;
+    #drop-zone {
+      border: 2px dashed #888;
       padding: 40px;
-      margin: 30px auto;
-      width: 60%;
-      background: #1a1a1a;
-      transition: 0.3s ease;
+      margin-top: 20px;
+      border-radius: 10px;
     }
-    #dropzone.dragover {
-      background-color: #222;
-      border-color: #888;
+    input, label, button {
+      margin: 10px;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
     }
-    label, input, button {
-      margin: 12px;
-      display: inline-block;
-    }
-    input[type="file"] {
-      display: none;
-    }
-    #progressBar {
-      width: 80%;
-      height: 16px;
-      margin: 20px auto;
+    #progress {
+      width: 100%;
       background: #333;
-      border-radius: 5px;
+      margin-top: 20px;
     }
-    #progressBarFill {
+    #progress-bar {
+      height: 20px;
+      background: linear-gradient(90deg, #00f260, #0575e6);
       width: 0%;
-      height: 100%;
-      background: linear-gradient(to right, #00ffff, #8f44fd);
-      border-radius: 5px;
-      transition: width 0.3s ease;
     }
   </style>
 </head>
 <body>
-  <h1>Fluxis</h1>
-  <p><strong>MCBE Pack Encryptor</strong> — Built to match McTools behavior</p>
-
-  <label><input type="checkbox" id="backupOption" checked> Backup before encrypting</label>
-
-  <div id="dropzone">Drag and drop your pack folder here</div>
-  <div id="progressBar"><div id="progressBarFill"></div></div>
-  <input type="file" id="folderInput" webkitdirectory directory multiple>
-  <br><button onclick="document.getElementById('folderInput').click()">Choose Folder</button>
+  <h1>Fluxis Encryptor</h1>
+  <label>
+    <input type="checkbox" id="backupToggle"> Enable Backup
+  </label>
+  <div id="drop-zone">Drop your MCBE pack folder here</div>
+  <div id="progress">
+    <div id="progress-bar"></div>
+  </div>
+  <pre id="manifest-preview"></pre>
 
   <script>
-    const key = "s5s5ejuDru4uchuF2drUFuthaspAbepE";
-    const iv = "s5s5ejuDru4uchuF";
+    const AES_KEY = 's5s5ejuDru4uchuF2drUFuthaspAbepE';
+    const AES_IV = 's5s5ejuDru4uchuF';
+    const encoder = new TextEncoder();
 
-    const dropzone = document.getElementById("dropzone");
-    const progress = document.getElementById("progressBarFill");
+    document.getElementById('drop-zone').addEventListener('drop', handleDrop);
+    document.getElementById('drop-zone').addEventListener('dragover', e => e.preventDefault());
 
-    dropzone.addEventListener("dragover", e => {
+    async function handleDrop(e) {
       e.preventDefault();
-      dropzone.classList.add("dragover");
-    });
-
-    dropzone.addEventListener("dragleave", () => {
-      dropzone.classList.remove("dragover");
-    });
-
-    dropzone.addEventListener("drop", async e => {
-      e.preventDefault();
-      dropzone.classList.remove("dragover");
-      const items = e.dataTransfer.items;
-      const entries = [];
-      for (const item of items) {
-        const entry = item.webkitGetAsEntry?.();
-        if (entry?.isDirectory) {
-          entries.push(entry);
-        }
+      const backupEnabled = document.getElementById('backupToggle').checked;
+      const items = [...e.dataTransfer.items];
+      const entry = items[0].webkitGetAsEntry();
+      if (!entry.isDirectory) {
+        alert('Drop a folder only.');
+        return;
       }
-      if (entries.length) {
-        handleFolderDrop(entries[0]);
+
+      const packFiles = await readDirectory(entry);
+      const manifestFile = packFiles.find(f => f.name === 'manifest.json');
+      if (!manifestFile) return alert('Missing manifest.json');
+
+      const manifestText = await manifestFile.file.text();
+      document.getElementById('manifest-preview').textContent = manifestText;
+
+      const manifestHash = await sha1(manifestText);
+      const contents = [];
+      const fileData = {};
+
+      let processed = 0;
+      for (const f of packFiles) {
+        const data = await f.file.arrayBuffer();
+        const hash = await sha1(data);
+        contents.push({
+          path: f.path,
+          hash: hash,
+          size: data.byteLength
+        });
+        fileData[f.path] = new Uint8Array(data);
+        processed++;
+        updateProgress((processed / packFiles.length) * 100);
       }
-    });
 
-    document.getElementById("folderInput").addEventListener("change", async e => {
-      const files = Array.from(e.target.files);
-      const base = files[0].webkitRelativePath.split("/")[0];
-      await processFiles(files, base);
-    });
+      const contentsJSON = JSON.stringify(contents, null, 2);
+      const signatureJSON = JSON.stringify({
+        version: 1,
+        signature: btoa(await encrypt(contentsJSON))
+      }, null, 2);
 
-    async function handleFolderDrop(entry) {
-      const reader = entry.createReader();
-      let entries = [];
-      let readEntries = () => new Promise(resolve => reader.readEntries(resolve));
-      let batch;
-      do {
-        batch = await readEntries();
-        entries = entries.concat(batch);
-      } while (batch.length);
-      const files = await Promise.all(entries.map(e => new Promise(resolve => e.file(resolve))));
-      const base = entry.name;
-      await processFiles(files, base);
+      fileData['contents.json'] = encoder.encode(contentsJSON);
+      fileData['signature.json'] = encoder.encode(signatureJSON);
+
+      if (backupEnabled) await createBackup(packFiles);
+
+      downloadZip(fileData, 'Encrypted_Pack.zip');
     }
 
-    async function processFiles(files, baseFolderName) {
-      progress.style.width = "5%";
-      const fileMap = {};
-      for (const file of files) {
-        fileMap[file.webkitRelativePath || file.name] = file;
-      }
-
-      // Read manifest
-      const manifestPath = Object.keys(fileMap).find(k => k.endsWith("manifest.json"));
-      if (!manifestPath) return alert("manifest.json not found.");
-      const manifest = JSON.parse(await fileMap[manifestPath].text());
-      const uuid = manifest.header.uuid;
-
-      // Create backup
-      if (document.getElementById("backupOption").checked) {
-        const zip = new JSZip();
-        for (const path in fileMap) {
-          zip.file(path.replace(`${baseFolderName}/`, ""), fileMap[path]);
+    async function readDirectory(entry, path = '') {
+      return new Promise(resolve => {
+        const reader = entry.createReader();
+        const entries = [];
+        function readEntries() {
+          reader.readEntries(async results => {
+            if (!results.length) {
+              const files = [];
+              for (const e of entries) {
+                if (e.isFile) {
+                  files.push(await getFileEntry(e, path));
+                } else if (e.isDirectory) {
+                  const sub = await readDirectory(e, path + e.name + '/');
+                  files.push(...sub);
+                }
+              }
+              resolve(files);
+            } else {
+              entries.push(...results);
+              readEntries();
+            }
+          });
         }
-        const backupBlob = await zip.generateAsync({type: "blob"});
-        const backupUrl = URL.createObjectURL(backupBlob);
-        const a = document.createElement("a");
-        a.href = backupUrl;
-        a.download = `${baseFolderName}_backup.zip`;
-        a.click();
-        progress.style.width = "15%";
+        readEntries();
+      });
+    }
+
+    async function getFileEntry(entry, base) {
+      return new Promise(resolve => {
+        entry.file(file => resolve({ path: base + file.name, file, name: file.name }));
+      });
+    }
+
+    async function sha1(input) {
+      const buffer = (input instanceof ArrayBuffer) ? input : encoder.encode(input);
+      const hash = await crypto.subtle.digest('SHA-1', buffer);
+      return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    async function encrypt(text) {
+      const key = await crypto.subtle.importKey(
+        'raw', encoder.encode(AES_KEY), { name: 'AES-CBC' }, false, ['encrypt']
+      );
+      const iv = encoder.encode(AES_IV);
+      const ciphertext = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, key, encoder.encode(text));
+      return String.fromCharCode(...new Uint8Array(ciphertext));
+    }
+
+    function updateProgress(percent) {
+      document.getElementById('progress-bar').style.width = percent + '%';
+    }
+
+    async function createBackup(files) {
+      const zipData = {};
+      for (const f of files) {
+        const data = await f.file.arrayBuffer();
+        zipData[f.path] = new Uint8Array(data);
       }
+      downloadZip(zipData, 'Backup_Pack.zip');
+    }
 
-      // Sign manifest
-      manifest.signature = "Fluxis Signed Manifest";
-      const updatedManifestBlob = new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" });
-
-      // Generate contents.json
-      const contents = [];
-      for (const [path, file] of Object.entries(fileMap)) {
-        const arrayBuffer = await file.arrayBuffer();
-        const hash = await crypto.subtle.digest("SHA-1", arrayBuffer);
-        const hashHex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
-        contents.push({ file: path.replace(baseFolderName + "/", ""), hash: hashHex });
+    function downloadZip(files, filename) {
+      const zip = new JSZip();
+      for (const path in files) {
+        zip.file(path, files[path]);
       }
-      const contentsBlob = new Blob([JSON.stringify(contents, null, 2)], { type: "application/json" });
-
-      progress.style.width = "50%";
-
-      // Encrypt files using AES-CBC
-      const aesKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(key), { name: "AES-CBC" }, false, ["encrypt"]);
-      const encryptedFiles = {};
-
-      for (const [path, file] of Object.entries(fileMap)) {
-        const ivBytes = new TextEncoder().encode(iv);
-        const encrypted = await crypto.subtle.encrypt({ name: "AES-CBC", iv: ivBytes }, aesKey, await file.arrayBuffer());
-        encryptedFiles[path.replace(baseFolderName + "/", "")] = new Uint8Array(encrypted);
-      }
-
-      progress.style.width = "75%";
-
-      // Create final pack zip
-      const finalZip = new JSZip();
-      for (const [name, data] of Object.entries(encryptedFiles)) {
-        finalZip.file(name, data);
-      }
-      finalZip.file("manifest.json", updatedManifestBlob);
-      finalZip.file("contents.json", contentsBlob);
-      finalZip.file("signature.json", new Blob([JSON.stringify({ signature: "Fluxis Signed", uuid })], { type: "application/json" }));
-
-      const blob = await finalZip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${baseFolderName}_encrypted.mcpack`;
-      a.click();
-
-      progress.style.width = "100%";
+      zip.generateAsync({ type: 'blob' }).then(blob => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+      });
     }
   </script>
+
+  <!-- Include JSZip -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </body>
 </html>
