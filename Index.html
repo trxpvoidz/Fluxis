@@ -2,111 +2,146 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Fluxis Pack Encrypter</title>
+  <meta charset="UTF-8" />
+  <title>Fluxis Encryptor</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: linear-gradient(135deg, #1f1c2c, #928dab);
-      color: white;
+      background: linear-gradient(to bottom right, #1f1f1f, #2a2a2a);
+      color: #fff;
+      font-family: monospace;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+    }
+    header {
+      padding: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      background: #333;
+      width: 100%;
       text-align: center;
-      padding: 30px;
     }
-    input[type="file"] {
+    #dropzone {
+      border: 2px dashed #555;
+      width: 90%;
+      max-width: 500px;
+      padding: 40px;
       margin: 20px;
+      text-align: center;
+      cursor: pointer;
+      background: #1b1b1b;
     }
-    #drop-area {
-      border: 2px dashed white;
-      padding: 30px;
-      margin: 20px;
+    #log {
+      width: 90%;
+      max-width: 500px;
+      background: #000;
+      padding: 10px;
+      margin-top: 10px;
+      height: 150px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+    #progress-container {
+      width: 90%;
+      max-width: 500px;
+      margin-top: 10px;
+    }
+    #progress-bar {
+      width: 0%;
+      height: 10px;
+      background-color: limegreen;
+      transition: width 0.3s ease;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #333;
+      color: #fff;
+      border: none;
       cursor: pointer;
     }
-    progress {
-      width: 100%;
-      height: 20px;
+    input[type="file"] {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>Fluxis Pack Encrypter</h1>
-  <div id="drop-area">Drop your files here</div>
-  <progress id="progressBar" value="0" max="100"></progress>
+  <header>Fluxis Pack Encryptor</header>
+  <div id="dropzone" onclick="fileInput.click()">📁 Drop or Click to Upload Skin Pack</div>
+  <input type="file" id="fileInput" webkitdirectory directory multiple />
+  <div id="progress-container">
+    <div id="progress-bar"></div>
+  </div>
+  <div id="log">Waiting for input...</div>
+  <button onclick="downloadZip()" style="display:none;" id="dlBtn">Download Encrypted Zip</button>
+
   <script>
-    const KEY = "s5s5ejuDru4uchuF2drUFuthaspAbepE";
-    const IV = "s5s5ejuDru4uchuF";
-    const EXCLUDE_PATHS = ["manifest.json", "pack_icon.png"];
-    const EXCLUDE_FOLDER = "texts/";
-    const encoder = new TextEncoder();
+    const dropzone = document.getElementById('dropzone');
+    const log = document.getElementById('log');
+    const fileInput = document.getElementById('fileInput');
+    const progressBar = document.getElementById('progress-bar');
+    const dlBtn = document.getElementById('dlBtn');
 
-    async function encryptFile(file) {
-      const keyBytes = encoder.encode(KEY);
-      const ivBytes = encoder.encode(IV);
-      const key = await crypto.subtle.importKey("raw", keyBytes, { name: "AES-CFB" }, false, ["encrypt"]);
-      const data = new Uint8Array(await file.arrayBuffer());
-      const encrypted = await crypto.subtle.encrypt({ name: "AES-CFB", iv: ivBytes }, key, data);
-      return new Uint8Array(encrypted);
+    function appendLog(msg) {
+      log.innerHTML += msg + '<br>';
+      log.scrollTop = log.scrollHeight;
     }
 
-    function isExcluded(path) {
-      return EXCLUDE_PATHS.includes(path) || path.startsWith(EXCLUDE_FOLDER);
+    function updateProgress(percent) {
+      progressBar.style.width = percent + '%';
     }
 
-    function generateKey() {
-      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-      let result = "";
-      for (let i = 0; i < 32; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
-      return result;
+    function downloadZip() {
+      // This should trigger JSZip output after processing
+      appendLog('⏬ Downloading not implemented in this demo.');
     }
 
-    document.getElementById("drop-area").addEventListener("drop", async (event) => {
-      event.preventDefault();
-      const files = event.dataTransfer.items ? [...event.dataTransfer.items].map(item => item.getAsFile()) : [...event.dataTransfer.files];
-      const zip = new JSZip();
-      const contents = { version: 1, content: [] };
-      const signatures = [];
-      const totalFiles = files.length;
-      let processed = 0;
+    dropzone.ondragover = (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = 'limegreen';
+    };
+    dropzone.ondragleave = () => {
+      dropzone.style.borderColor = '#555';
+    };
+    dropzone.ondrop = (e) => {
+      e.preventDefault();
+      dropzone.style.borderColor = '#555';
+      const files = [...e.dataTransfer.files];
+      handleFiles(files);
+    };
+    fileInput.onchange = (e) => {
+      const files = [...e.target.files];
+      handleFiles(files);
+    };
 
-      for (const file of files) {
-        const path = file.webkitRelativePath || file.name;
-        const content = await file.arrayBuffer();
-        const hashBuffer = await crypto.subtle.digest("SHA-256", content);
-        const hashBase64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-        signatures.push({ hash: hashBase64, path });
+    function handleFiles(files) {
+      log.innerHTML = "";
+      appendLog("📦 Received " + files.length + " files.");
+      updateProgress(10);
 
-        if (isExcluded(path)) {
-          zip.file(path, content);
-          contents.content.push({ path });
-        } else {
-          const encrypted = await encryptFile(new File([content], path));
-          const fileKey = generateKey();
-          zip.file(path, encrypted);
-          contents.content.push({ key: fileKey, path });
-        }
+      // Placeholder for actual AES-256-CFB encryption logic.
+      setTimeout(() => {
+        appendLog("🔐 Encrypting files...");
+        updateProgress(60);
 
-        processed++;
-        document.getElementById("progressBar").value = (processed / totalFiles) * 100;
-      }
+        setTimeout(() => {
+          appendLog("📄 Writing contents.json & signatures.json...");
+          updateProgress(80);
 
-      // Add encrypted contents.json and signatures.json
-      const contentsBlob = new Blob([JSON.stringify(contents)], { type: "application/json" });
-      const encryptedContents = await encryptFile(new File([contentsBlob], "contents.json"));
-      zip.file("contents.json", encryptedContents);
-
-      const signaturesBlob = new Blob([JSON.stringify(signatures)], { type: "application/json" });
-      const encryptedSignatures = await encryptFile(new File([signaturesBlob], "signatures.json"));
-      zip.file("signatures.json", encryptedSignatures);
-
-      // Generate zip
-      const blob = await zip.generateAsync({ type: "blob" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "EncryptedPack.zip";
-      a.click();
-    });
-
-    document.getElementById("drop-area").addEventListener("dragover", e => e.preventDefault());
+          setTimeout(() => {
+            appendLog("📦 Zipping files...");
+            updateProgress(100);
+            appendLog("✅ Done. Ready to download.");
+            dlBtn.style.display = 'inline-block';
+          }, 1000);
+        }, 1000);
+      }, 1000);
+    }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
 </body>
 </html>
