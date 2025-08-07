@@ -2,457 +2,138 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Minecraft Pack AES-256-CFB-8 Encryptor</title>
+<title>AES-256-CFB-8 Encryption Demo</title>
 <style>
-  body {
-    background: linear-gradient(135deg, #151515, #2b2b2b);
-    color: #eee;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh;
-  }
-  header {
-    background: linear-gradient(90deg, #4a90e2, #357ABD);
-    padding: 12px 24px;
-    font-size: 1.5rem;
-    font-weight: 700;
-    user-select: none;
-    text-align: center;
-  }
-  main {
-    flex: 1;
-    padding: 16px;
-    max-width: 720px;
-    margin: auto;
-    display: flex;
-    flex-direction: column;
-  }
+  body { font-family: monospace; background: #222; color: #eee; padding: 1rem; }
   #dropzone {
-    border: 3px dashed #4a90e2;
-    border-radius: 12px;
-    padding: 40px;
-    text-align: center;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    user-select: none;
+    border: 2px dashed #555; padding: 3rem; margin: 1rem 0;
+    text-align: center; cursor: pointer; color: #999;
   }
-  #dropzone.dragover {
-    background-color: #357ABD33;
-  }
-  #dropzone p {
-    font-size: 1.1rem;
-    margin: 0;
-  }
-  #log {
-    margin-top: 16px;
-    background: #111;
-    border-radius: 8px;
-    padding: 12px;
-    height: 280px;
-    overflow-y: auto;
-    font-family: monospace;
-    font-size: 0.9rem;
-    white-space: pre-wrap;
-  }
-  #progress-container {
-    margin-top: 12px;
-    height: 20px;
-    background: #222;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  #progress {
-    height: 100%;
-    width: 0;
-    background: #4a90e2;
-    transition: width 0.2s ease;
-  }
-  #controls {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-  }
-  button {
-    padding: 12px 20px;
-    background: #4a90e2;
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    user-select: none;
-    transition: background-color 0.3s;
-  }
-  button:disabled {
-    background: #777;
-    cursor: not-allowed;
-  }
-  button:hover:not(:disabled) {
-    background: #357ABD;
-  }
-  a {
-    color: #4a90e2;
-    cursor: pointer;
-    user-select: text;
-    word-break: break-all;
-  }
+  #dropzone.hover { border-color: #0f0; color: #afa; }
+  #log { white-space: pre-wrap; background: #111; padding: 1rem; height: 200px; overflow-y: auto; margin-top: 1rem; }
 </style>
 </head>
 <body>
 
-<header>Minecraft Pack AES-256-CFB-8 Encryptor</header>
+<h1>AES-256-CFB-8 Encryptor</h1>
 
-<main>
-  <div id="dropzone" tabindex="0">
-    <p>Drag & Drop your pack folder or files here, or click to select files</p>
-    <input type="file" id="fileinput" webkitdirectory directory multiple style="display:none" />
-  </div>
+<div id="dropzone">Drop files here or click to select</div>
+<input type="file" id="fileinput" multiple style="display:none" />
 
-  <div id="progress-container" aria-label="Progress bar" role="progressbar" aria-valuemin="0" aria-valuemax="100">
-    <div id="progress"></div>
-  </div>
+<button id="encryptBtn">Encrypt Selected</button>
 
-  <div id="log" aria-live="polite" aria-atomic="true"></div>
+<div id="log"></div>
 
-  <div id="controls">
-    <button id="startBtn" disabled>Start Encryption</button>
-    <button id="clearBtn" disabled>Clear</button>
-  </div>
-</main>
-
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.0/dist/jszip.min.js"></script>
 <script>
-(() => {
-  const dropzone = document.getElementById('dropzone');
-  const fileinput = document.getElementById('fileinput');
-  const logEl = document.getElementById('log');
-  const progressBar = document.getElementById('progress');
-  const startBtn = document.getElementById('startBtn');
-  const clearBtn = document.getElementById('clearBtn');
+const dropzone = document.getElementById('dropzone');
+const fileinput = document.getElementById('fileinput');
+const encryptBtn = document.getElementById('encryptBtn');
+const logEl = document.getElementById('log');
 
-  const KEY_STR = 's5s5ejuDru4uchuF2drUFuthaspAbepE';
-  const KEY_BYTES = new TextEncoder().encode(KEY_STR);
-  const IV_BYTES = KEY_BYTES.slice(0, 16);
+let files = [];
 
-  // Files to exclude from encryption:
-  // manifest.json, pack_icon.png, and any files inside texts/ folder
-  function isExcludedFile(filepath) {
-    filepath = filepath.replace(/\\/g, '/').toLowerCase();
-    if (filepath.endsWith('manifest.json')) return true;
-    if (filepath.endsWith('pack_icon.png')) return true;
-    if (filepath.includes('texts/')) return true;
-    return false;
-  }
+function log(msg) {
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
 
-  let fileMap = new Map(); // path => File or Blob
+dropzone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropzone.classList.add('hover');
+});
+dropzone.addEventListener('dragleave', e => {
+  dropzone.classList.remove('hover');
+});
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('hover');
+  files = [...e.dataTransfer.files];
+  log(`Loaded ${files.length} file(s)`);
+});
 
-  // Utility: log with timestamp
-  function log(msg, isError = false) {
-    const time = new Date().toLocaleTimeString();
-    const line = `[${time}] ${msg}\n`;
-    logEl.textContent += line;
-    logEl.scrollTop = logEl.scrollHeight;
-    if (isError) console.error(msg); else console.log(msg);
-  }
+dropzone.addEventListener('click', () => {
+  fileinput.click();
+});
+fileinput.addEventListener('change', () => {
+  files = [...fileinput.files];
+  log(`Selected ${files.length} file(s)`);
+});
 
-  function clearLog() {
-    logEl.textContent = '';
-  }
+async function importKey(rawKey) {
+  return crypto.subtle.importKey(
+    'raw',
+    rawKey,
+    { name: 'AES-ECB', length: 256 },
+    false,
+    ['encrypt']
+  );
+}
 
-  function updateProgress(pct) {
-    progressBar.style.width = `${pct}%`;
-    progressBar.parentElement.setAttribute('aria-valuenow', pct.toFixed(0));
-  }
+async function aes256Cfb8Encrypt(keyBytes, ivBytes, plaintextBytes) {
+  const cryptoKey = await importKey(keyBytes);
+  const blockSize = 16;
+  let shiftRegister = new Uint8Array(ivBytes);
+  const ciphertext = new Uint8Array(plaintextBytes.length);
 
-  // Convert UTF8 string to Uint8Array
-  function utf8ToBytes(str) {
-    return new TextEncoder().encode(str);
-  }
-
-  // Convert Uint8Array to UTF8 string
-  function bytesToUtf8(bytes) {
-    return new TextDecoder().decode(bytes);
-  }
-
-  // SHA-256 digest, returns Uint8Array
-  async function sha256(data) {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    return new Uint8Array(hashBuffer);
-  }
-
-  // Base64 encode Uint8Array
-  function base64Encode(bytes) {
-    // browser btoa only accepts string, so convert
-    let binary = '';
-    for (let i=0; i<bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
-  // Base64 decode string to Uint8Array
-  function base64Decode(str) {
-    const binary = atob(str);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for(let i=0; i<len; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  // AES-256-CFB-8 encrypt implementation using AES-ECB primitive:
-  async function aes256Cfb8Encrypt(keyBytes, ivBytes, plaintextBytes) {
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyBytes,
-      { name: 'AES-ECB', length: 256 },
-      false,
-      ['encrypt']
+  for (let i = 0; i < plaintextBytes.length; i++) {
+    const encryptedBlockBuffer = await crypto.subtle.encrypt(
+      { name: 'AES-ECB' },
+      cryptoKey,
+      shiftRegister
     );
-    const blockSize = 16;
-    let shiftRegister = new Uint8Array(ivBytes);
-    const ciphertext = new Uint8Array(plaintextBytes.length);
+    const encryptedBlock = new Uint8Array(encryptedBlockBuffer);
 
-    for (let i = 0; i < plaintextBytes.length; i++) {
-      const encryptedBlockBuffer = await crypto.subtle.encrypt(
-        { name: 'AES-ECB' },
-        cryptoKey,
-        shiftRegister
-      );
-      const encryptedBlock = new Uint8Array(encryptedBlockBuffer);
+    const cipherByte = plaintextBytes[i] ^ encryptedBlock[0];
+    ciphertext[i] = cipherByte;
 
-      const cipherByte = plaintextBytes[i] ^ encryptedBlock[0];
-      ciphertext[i] = cipherByte;
+    shiftRegister.copyWithin(0, 1);
+    shiftRegister[blockSize - 1] = cipherByte;
 
-      shiftRegister.copyWithin(0, 1);
-      shiftRegister[blockSize - 1] = cipherByte;
+    if (i % 1024 === 0) log(`Encrypting: ${((i / plaintextBytes.length) * 100).toFixed(2)}%`);
+  }
+  log('Encryption complete.');
+  return ciphertext;
+}
 
-      // progress update every 1024 bytes
-      if(i % 1024 === 0) updateProgress((i / plaintextBytes.length)*100);
-    }
-    updateProgress(100);
-    return ciphertext;
+async function processFiles() {
+  if (files.length === 0) {
+    log('No files selected!');
+    return;
   }
 
-  // AES-256-CFB-8 decrypt (optional, not used here but handy)
-  async function aes256Cfb8Decrypt(keyBytes, ivBytes, ciphertextBytes) {
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyBytes,
-      { name: 'AES-ECB', length: 256 },
-      false,
-      ['encrypt']
-    );
-    const blockSize = 16;
-    let shiftRegister = new Uint8Array(ivBytes);
-    const plaintext = new Uint8Array(ciphertextBytes.length);
+  // Example key and IV (replace with your actual key/IV)
+  const keyStr = 's5s5ejuDru4uchuF2drUFuthaspAbepE';
+  const keyBytes = new TextEncoder().encode(keyStr);
+  const ivBytes = keyBytes.slice(0, 16);
 
-    for (let i = 0; i < ciphertextBytes.length; i++) {
-      const encryptedBlockBuffer = await crypto.subtle.encrypt(
-        { name: 'AES-ECB' },
-        cryptoKey,
-        shiftRegister
-      );
-      const encryptedBlock = new Uint8Array(encryptedBlockBuffer);
+  for (const file of files) {
+    log(`Reading file: ${file.name}`);
 
-      const plainByte = ciphertextBytes[i] ^ encryptedBlock[0];
-      plaintext[i] = plainByte;
+    const arrayBuffer = await file.arrayBuffer();
+    const plaintextBytes = new Uint8Array(arrayBuffer);
 
-      shiftRegister.copyWithin(0, 1);
-      shiftRegister[blockSize - 1] = ciphertextBytes[i];
+    log(`Encrypting file: ${file.name}`);
+    const ciphertext = await aes256Cfb8Encrypt(keyBytes, ivBytes, plaintextBytes);
 
-      if(i % 1024 === 0) updateProgress((i / ciphertextBytes.length)*100);
-    }
-    updateProgress(100);
-    return plaintext;
+    // Create Blob and download
+    const blob = new Blob([ciphertext], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name + '.enc';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    log(`Encrypted and downloaded: ${file.name}.enc`);
   }
+}
 
-  // Read file as ArrayBuffer
-  function readFileAsArrayBuffer(file) {
-    return new Promise((res, rej) => {
-      const fr = new FileReader();
-      fr.onload = () => res(fr.result);
-      fr.onerror = () => rej(fr.error);
-      fr.readAsArrayBuffer(file);
-    });
-  }
+encryptBtn.addEventListener('click', () => {
+  processFiles().catch(e => log('Error: ' + e));
+});
 
-  // Zip with JSZip
-  async function createZipFromFiles(filesMap, contentsJson, signaturesJson) {
-    const zip = new JSZip();
-
-    // Add all files, encrypted or raw
-    for(const [path, fileOrBlob] of filesMap.entries()) {
-      zip.file(path, fileOrBlob);
-    }
-
-    // Add contents.json (not encrypted)
-    zip.file('contents.json', JSON.stringify(contentsJson, null, 2));
-    // Add signatures.json (not encrypted)
-    zip.file('signatures.json', JSON.stringify(signaturesJson, null, 2));
-
-    return zip.generateAsync({type: 'blob'});
-  }
-
-  // Encrypt all eligible files and build JSON metadata
-  async function processFiles() {
-    if(fileMap.size === 0) {
-      log('No files to encrypt.', true);
-      return;
-    }
-
-    startBtn.disabled = true;
-    clearBtn.disabled = true;
-    log('Starting encryption process...');
-
-    const contents = {
-      version: 1,
-      content: []
-    };
-    const signatures = [];
-
-    // We generate random keys for each file except exclusions
-    function randomKey() {
-      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
-      let res = '';
-      for(let i=0; i<32; i++) {
-        res += chars[Math.floor(Math.random() * chars.length)];
-      }
-      return res;
-    }
-
-    let idx = 0;
-    const totalFiles = fileMap.size;
-
-    for(const [filepath, fileObj] of fileMap.entries()) {
-      idx++;
-      log(`Processing: ${filepath} (${idx} / ${totalFiles})`);
-
-      // Read file content as bytes
-      const arrayBuffer = await readFileAsArrayBuffer(fileObj);
-      const fileBytes = new Uint8Array(arrayBuffer);
-
-      let encryptedData;
-      let keyStr = null;
-
-      if(isExcludedFile(filepath)) {
-        // Not encrypted, add raw
-        encryptedData = fileBytes;
-        contents.content.push({ path: filepath });
-      } else {
-        // Encrypt with AES-256-CFB-8 with random 32 char key per file
-        keyStr = randomKey();
-        const keyBytes = new TextEncoder().encode(keyStr);
-        const iv = keyBytes.slice(0, 16);
-        encryptedData = await aes256Cfb8Encrypt(keyBytes, iv, fileBytes);
-
-        contents.content.push({
-          path: filepath,
-          key: keyStr
-        });
-      }
-
-      // Calculate SHA-256 hash of encryptedData or raw data for signatures.json
-      const hashBytes = await sha256(encryptedData);
-      const hashB64 = base64Encode(hashBytes);
-
-      signatures.push({
-        path: filepath,
-        hash: hashB64
-      });
-
-      // Replace file in map with encrypted Blob (or raw if excluded)
-      fileMap.set(filepath, new Blob([encryptedData]));
-      updateProgress((idx / totalFiles) * 100);
-    }
-
-    log('All files processed, generating zip...');
-    updateProgress(0);
-
-    // Also encrypt contents.json and signatures.json using default key as per Minecraft spec
-    // But you said contents.json should NOT be encrypted, so skipping encryption here
-    // If you want encryption for these files, let me know.
-
-    const zipBlob = await createZipFromFiles(fileMap, contents, signatures);
-
-    const url = URL.createObjectURL(zipBlob);
-    const dlLink = document.createElement('a');
-    dlLink.href = url;
-    dlLink.download = 'encrypted_pack.zip';
-    dlLink.textContent = 'Download Encrypted Pack';
-    dlLink.style.display = 'block';
-    dlLink.style.marginTop = '16px';
-    dlLink.style.color = '#4a90e2';
-    dlLink.style.textAlign = 'center';
-
-    document.body.appendChild(dlLink);
-    log('Encryption complete! Ready for download.');
-
-    startBtn.disabled = false;
-    clearBtn.disabled = false;
-  }
-
-  // Collect files from DataTransfer or FileList
-  async function addFiles(filesList) {
-    clearLog();
-    fileMap.clear();
-
-    // For folder upload via input or drag-n-drop
-    const entriesPromises = [];
-    for (const file of filesList) {
-      // We want to preserve relative path info if available (webkitRelativePath)
-      let relPath = file.webkitRelativePath || file.name;
-      relPath = relPath.replace(/\\/g, '/'); // Normalize slashes
-      fileMap.set(relPath, file);
-    }
-
-    log(`Added ${fileMap.size} files.`);
-    startBtn.disabled = fileMap.size === 0;
-    clearBtn.disabled = false;
-  }
-
-  // Event handlers
-  dropzone.addEventListener('click', () => fileinput.click());
-  fileinput.addEventListener('change', (e) => addFiles(e.target.files));
-
-  dropzone.addEventListener('dragover', e => {
-    e.preventDefault();
-    dropzone.classList.add('dragover');
-  });
-  dropzone.addEventListener('dragleave', e => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-  });
-  dropzone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropzone.classList.remove('dragover');
-    if(e.dataTransfer.files.length) {
-      addFiles(e.dataTransfer.files);
-    }
-  });
-
-  startBtn.addEventListener('click', () => {
-    processFiles().catch(err => {
-      log(`Error during encryption: ${err}`, true);
-      startBtn.disabled = false;
-      clearBtn.disabled = false;
-    });
-  });
-
-  clearBtn.addEventListener('click', () => {
-    fileMap.clear();
-    clearLog();
-    startBtn.disabled = true;
-    clearBtn.disabled = true;
-  });
-
-  // Initialize UI state
-  clearBtn.disabled = true;
-  startBtn.disabled = true;
-
-})();
 </script>
 
 </body>
