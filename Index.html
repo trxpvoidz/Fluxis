@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fluxis Encryptor</title>
+  <style>
+    body {
+      background: #0b0b0b;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 50px;
+      animation: fadeIn 1s ease;
+    }
+
+    h1 {
+      font-size: 3em;
+      background: linear-gradient(90deg, #00f0ff, #8a00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px #8a00ff80;
+      animation: pulse 3s infinite alternate;
+    }
+
+    input, button {
+      padding: 10px 20px;
+      font-size: 1em;
+      margin: 10px;
+      border-radius: 6px;
+      border: none;
+    }
+
+    button {
+      background: #8a00ff;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #6200c1;
+    }
+
+    @keyframes pulse {
+      from { text-shadow: 0 0 10px #8a00ff80; }
+      to { text-shadow: 0 0 30px #00f0ff; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <h1>Fluxis Encryptor</h1>
+  <input type="file" id="packInput" webkitdirectory directory />
+  <br>
+  <button onclick="encryptPack()">Encrypt Pack</button>
+  <pre id="log"></pre>
+
+  <script>
+    const keyBase64 = btoa("s5s5ejuDru4uchuF2drUFuthaspAbepE");
+    const ivBase64 = btoa("s5s5ejuDru4uchuF");
+
+    function log(msg) {
+      document.getElementById("log").textContent += msg + "\n";
+    }
+
+    async function encryptPack() {
+      const input = document.getElementById("packInput");
+      const files = input.files;
+
+      if (!files.length) return log("Select a pack folder first.");
+
+      let fileMap = {};
+      for (let file of files) {
+        fileMap[file.webkitRelativePath] = file;
+      }
+
+      if (!fileMap["manifest.json"]) return log("Missing manifest.json");
+
+      const manifestText = await fileMap["manifest.json"].text();
+      const uuid = JSON.parse(manifestText).header.uuid;
+
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey("raw", Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0)), {name: "AES-CBC"}, false, ["encrypt"]);
+      const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+
+      let contents = [];
+      for (let [path, file] of Object.entries(fileMap)) {
+        if (path === "manifest.json") continue;
+        const data = await file.arrayBuffer();
+
+        const encrypted = await crypto.subtle.encrypt({ name: "AES-CBC", iv }, key, data);
+        const hash = await crypto.subtle.digest("SHA-1", data);
+        contents.push({
+          path: path.replace(/\\/g, "/"),
+          key: btoa(String.fromCharCode(...new Uint8Array(hash))),
+          iv: ivBase64,
+          encryptionKey: keyBase64
+        });
+
+        // Replace file in map (simulate encryption)
+        fileMap[path] = new File([encrypted], file.name);
+      }
+
+      // contents.json
+      const contentsJson = JSON.stringify(contents, null, 2);
+      fileMap["contents.json"] = new File([contentsJson], "contents.json");
+
+      // signature.json (fake signature based on uuid, like McTools does)
+      const fakeSig = {
+        "header": { "signature": uuid, "alg": "SHA1withRSA" },
+        "entries": contents.map(x => x.path)
+      };
+      fileMap["signature.json"] = new File([JSON.stringify(fakeSig, null, 2)], "signature.json");
+
+      downloadPack(fileMap);
+    }
+
+    function downloadPack(fileMap) {
+      const zip = new JSZip();
+      for (let [path, file] of Object.entries(fileMap)) {
+        zip.file(path, file);
+      }
+
+      zip.generateAsync({type: "blob"}).then(content => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(content);
+        a.download = "Encrypted_Pack_Fluxis.mcpack";
+        a.click();
+      });
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+</body>
+</html>
