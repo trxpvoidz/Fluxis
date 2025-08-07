@@ -2,213 +2,146 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Fluxis Encryptor</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <title>Fluxis Pack Encryptor</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
   <style>
     body {
-      background: #0a0a0a;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-      text-align: center;
+      background: linear-gradient(to right, #111, #1c1c1c);
+      color: #fff;
+      font-family: monospace;
       padding: 20px;
+      text-align: center;
     }
-    h1 {
-      font-size: 2em;
-      background: linear-gradient(90deg, #6af, #a6f);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 10px #6af;
-    }
-    #dropzone {
-      border: 2px dashed #aaa;
-      padding: 40px;
-      margin: 20px;
-      border-radius: 10px;
+    #drop-zone {
+      border: 2px dashed #555;
+      padding: 30px;
+      margin: 20px auto;
+      width: 80%;
       cursor: pointer;
     }
     #log {
       text-align: left;
-      max-height: 200px;
-      overflow: auto;
-      font-family: monospace;
-      background: #111;
+      white-space: pre-wrap;
+      background: #000;
       padding: 10px;
-      margin: 10px auto;
-      border-radius: 8px;
-      width: 90%;
-      font-size: 0.85em;
+      margin-top: 20px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 14px;
     }
-    button {
-      margin-top: 12px;
-      background: #222;
-      color: white;
-      border: 1px solid #555;
-      padding: 8px 16px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #333;
-    }
-    input[type="file"] {
-      display: none;
+    progress {
+      width: 100%;
+      height: 20px;
     }
   </style>
 </head>
 <body>
   <h1>Fluxis Pack Encryptor</h1>
-  <div id="dropzone">📁 Drop folder or zip here<br/>or click to choose</div>
-  <input type="file" id="filePicker" webkitdirectory directory multiple />
-  <input type="file" id="zipPicker" accept=".zip" />
-  <br>
-  <button onclick="startEncryption()">Start Encryption</button>
+  <div id="drop-zone">Drop your pack folder here or click to select</div>
+  <input type="file" id="file-input" webkitdirectory directory multiple hidden />
+  <progress id="progress" value="0" max="100" hidden></progress>
   <div id="log"></div>
-
   <script>
-    const key = new TextEncoder().encode("s5s5ejuDru4uchuF2drUFuthaspAbepE");
-    const iv = new TextEncoder().encode("s5s5ejuDru4uchuF");
+    const key = CryptoJS.enc.Utf8.parse("s5s5ejuDru4uchuF2drUFuthaspAbepE");
+    const iv = CryptoJS.enc.Utf8.parse("s5s5ejuDru4uchuF");
 
-    const dropzone = document.getElementById("dropzone");
-    const filePicker = document.getElementById("filePicker");
-    const zipPicker = document.getElementById("zipPicker");
-    const logBox = document.getElementById("log");
-
-    let inputFiles = [];
-
-    dropzone.onclick = () => filePicker.click();
-    filePicker.onchange = e => {
-      inputFiles = [...e.target.files];
-      log("📁 Folder selected: " + inputFiles.length + " files");
-    };
-    zipPicker.onchange = e => {
-      const file = e.target.files[0];
-      if (!file || !file.name.endsWith(".zip")) return;
-      JSZip.loadAsync(file).then(zip => {
-        zip.forEach((path, file) => {
-          file.async("uint8array").then(data => {
-            const fakeFile = new File([data], path);
-            inputFiles.push(fakeFile);
-          });
-        });
-        log("📦 Zip loaded");
-      });
-    };
-
-    dropzone.ondragover = e => {
-      e.preventDefault();
-      dropzone.style.borderColor = "#6af";
-    };
-    dropzone.ondragleave = () => {
-      dropzone.style.borderColor = "#aaa";
-    };
-    dropzone.ondrop = e => {
-      e.preventDefault();
-      dropzone.style.borderColor = "#aaa";
-
-      const items = [...e.dataTransfer.items];
-      inputFiles = [];
-
-      const queue = items.map(item => {
-        const entry = item.webkitGetAsEntry?.();
-        if (entry && entry.isDirectory) {
-          return readAllFiles(entry);
-        } else {
-          return Promise.resolve([item.getAsFile()]);
-        }
-      });
-
-      Promise.all(queue).then(flat => {
-        inputFiles = flat.flat();
-        log("📁 Dropped: " + inputFiles.length + " files");
-      });
-    };
-
-    function readAllFiles(entry, path = "") {
-      return new Promise(resolve => {
-        const reader = entry.createReader();
-        reader.readEntries(entries => {
-          const promises = entries.map(e => {
-            if (e.isFile) {
-              return new Promise(res => {
-                e.file(f => {
-                  f.fullPath = path + e.name;
-                  res(f);
-                });
-              });
-            } else {
-              return readAllFiles(e, path + e.name + "/");
-            }
-          });
-          Promise.all(promises).then(r => resolve(r.flat()));
-        });
-      });
+    function log(msg) {
+      const logEl = document.getElementById("log");
+      const span = document.createElement("span");
+      span.textContent = msg + "\n";
+      logEl.appendChild(span);
+      span.addEventListener("click", () => alert(msg));
     }
 
-    async function startEncryption() {
-      if (!inputFiles.length) return log("⚠️ No files to encrypt.");
+    function encryptCFB(content) {
+      const wordArray = CryptoJS.lib.WordArray.create(content);
+      const encrypted = CryptoJS.AES.encrypt(wordArray, key, {
+        iv: iv,
+        mode: CryptoJS.mode.CFB,
+        padding: CryptoJS.pad.NoPadding
+      });
+      return encrypted.ciphertext;
+    }
 
+    function sha256(buffer) {
+      const wordArray = CryptoJS.lib.WordArray.create(buffer);
+      const hash = CryptoJS.SHA256(wordArray);
+      return CryptoJS.enc.Base64.stringify(hash);
+    }
+
+    function isExcluded(path) {
+      return path.endsWith("manifest.json") || path.endsWith("pack_icon.png") || path.includes("/texts/");
+    }
+
+    document.getElementById("drop-zone").addEventListener("click", () => {
+      document.getElementById("file-input").click();
+    });
+
+    document.getElementById("drop-zone").addEventListener("dragover", e => {
+      e.preventDefault();
+    });
+
+    document.getElementById("drop-zone").addEventListener("drop", e => {
+      e.preventDefault();
+      handleFiles(e.dataTransfer.files);
+    });
+
+    document.getElementById("file-input").addEventListener("change", e => {
+      handleFiles(e.target.files);
+    });
+
+    async function handleFiles(fileList) {
+      const files = Array.from(fileList);
       const zip = new JSZip();
       const contents = [];
       const signatures = [];
 
-      for (const file of inputFiles) {
-        const rawPath = file.webkitRelativePath || file.fullPath || file.name;
-        const normPath = rawPath.replace(/^.*?\/?/, "");
+      const progress = document.getElementById("progress");
+      progress.hidden = false;
+      progress.value = 0;
 
-        if (
-          normPath === "manifest.json" ||
-          normPath === "pack_icon.png" ||
-          normPath.startsWith("texts/")
-        ) {
-          zip.file(normPath, file);
-          log("⚪ Skipped (no encryption): " + normPath);
-          continue;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const relativePath = file.webkitRelativePath || file.name;
+        log("Processing: " + relativePath);
+
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+        const hash = sha256(uint8);
+        signatures.push(`{"hash":"${hash}","path":"${relativePath}"}`);
+
+        if (!isExcluded(relativePath)) {
+          const encrypted = encryptCFB(uint8);
+          zip.file(relativePath, encrypted.toString(CryptoJS.enc.Base64), { base64: true });
+          contents.push({ key: relativePath, path: relativePath });
+        } else {
+          zip.file(relativePath, uint8);
         }
 
-        const buffer = await file.arrayBuffer();
-        const data = new Uint8Array(buffer);
-        const encrypted = await aesEncrypt(data, key, iv);
-
-        zip.file(normPath, encrypted);
-        log("🔐 Encrypted: " + normPath);
-
-        const hashBuffer = await crypto.subtle.digest("SHA-256", encrypted);
-        const hashBase64 = btoa(String.fromCharCode(...new Uint8Array(hashBuffer)));
-
-        contents.push({ path: normPath });
-        signatures.push({ path: normPath, hash: hashBase64 });
+        progress.value = (i + 1) / files.length * 100;
       }
 
-      const contentsJson = new TextEncoder().encode(JSON.stringify({ key: "default", files: contents }, null, 2));
-      const signaturesJson = new TextEncoder().encode(JSON.stringify(signatures, null, 2));
+      // contents.json + signatures.json
+      const contentsJSON = JSON.stringify(contents);
+      const signaturesJSON = "[" + signatures.join(",") + "]";
+      const encContents = encryptCFB(new TextEncoder().encode(contentsJSON));
+      const encSignatures = encryptCFB(new TextEncoder().encode(signaturesJSON));
 
-      const encContents = await aesEncrypt(contentsJson, key, iv);
-      const encSignatures = await aesEncrypt(signaturesJson, key, iv);
+      zip.file("contents.json", encContents.toString(CryptoJS.enc.Base64), { base64: true });
+      zip.file("signatures.json", encSignatures.toString(CryptoJS.enc.Base64), { base64: true });
 
-      zip.file("contents.json", encContents);
-      zip.file("signatures.json", encSignatures);
-      log("✅ Encrypted contents.json and signatures.json");
-
-      zip.generateAsync({ type: "blob" }).then(blob => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "encrypted_pack.zip";
-        a.click();
-        log("🎉 Done! Download started.");
-      });
-    }
-
-    async function aesEncrypt(data, key, iv) {
-      const cryptoKey = await crypto.subtle.importKey("raw", key, "AES-CFB", false, ["encrypt"]);
-      const encrypted = await crypto.subtle.encrypt({ name: "AES-CFB", iv }, cryptoKey, data);
-      return new Uint8Array(encrypted);
-    }
-
-    function log(msg) {
-      const line = document.createElement("div");
-      line.textContent = msg;
-      logBox.appendChild(line);
-      logBox.scrollTop = logBox.scrollHeight;
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "encrypted_pack.zip";
+      a.textContent = "Download Encrypted Pack";
+      a.style.display = "block";
+      a.style.marginTop = "20px";
+      document.body.appendChild(a);
+      log("✅ Done. Pack ready.");
+      progress.hidden = true;
     }
   </script>
 </body>
