@@ -1,428 +1,487 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Fluxis - Minecraft Bedrock Pack Encryptor (Version 2)</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fluxis — iOS Persona Cape Builder</title>
 <style>
-  body {
-    background: #111;
-    color: #eee;
-    font-family: monospace, monospace;
-    margin: 0; padding: 0;
-    display: flex; flex-direction: column; height: 100vh;
+  :root{
+    --bg:#0b0d12;--panel:#0f1320;--ink:#e9ecf6;--muted:#9aa3b3;--line:#202842;
+    --accent:#6ea8fe;--accent2:#9d7bff;--ok:#3be1a1;--warn:#ffbf69;--err:#ff7474;
+    --glow: 0 0 32px rgba(110,168,254,.25), 0 0 80px rgba(157,123,255,.18);
   }
-  header {
-    background: linear-gradient(45deg, #3a3a3a, #1a1a1a);
-    padding: 1em;
-    font-weight: bold;
-    font-size: 1.4em;
-    text-align: center;
-    user-select: none;
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 800px at 10% -10%,rgba(110,168,254,.08),transparent 60%),
+                    radial-gradient(1200px 800px at 110% 10%,rgba(157,123,255,.08),transparent 60%),
+                    linear-gradient(180deg,#0a0d14,#0b0d12 40%,#0b0d12);
+       color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  header{
+    position:relative; padding:34px 18px 26px; border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(600px 120px at 30% -40%, rgba(110,168,254,.25), transparent 70%),
+      radial-gradient(600px 120px at 70% -40%, rgba(157,123,255,.25), transparent 70%),
+      linear-gradient(180deg,rgba(23,28,48,.65),rgba(18,22,38,.35));
+    box-shadow: inset 0 -1px 0 rgba(255,255,255,.03);
   }
-  main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 1em;
-    gap: 0.5em;
+  .wrap{max-width:1000px;margin:0 auto;padding:0 16px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{
+    width:38px;height:38px;border-radius:12px;
+    background:
+      conic-gradient(from 140deg, #6ea8fe, #9d7bff, #6ea8fe);
+    filter: drop-shadow(0 0 22px rgba(110,168,254,.4));
+    position:relative;
   }
-  #log {
-    flex: 1;
-    background: #222;
-    padding: 1em;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    border-radius: 4px;
+  .logo::after{
+    content:""; position:absolute; inset:4px; border-radius:10px;
+    background: radial-gradient(80% 80% at 30% 30%, rgba(255,255,255,.45), rgba(255,255,255,.1) 45%, rgba(0,0,0,.12) 46%),
+                linear-gradient(180deg,rgba(255,255,255,.18),rgba(0,0,0,.12));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), inset 0 0 30px rgba(255,255,255,.08);
   }
-  #log a {
-    color: #56caff;
-    cursor: pointer;
-    text-decoration: underline;
+  h1{margin:0;font-size:1.3rem;letter-spacing:.3px}
+  .subtitle{color:var(--muted);margin-top:6px}
+  main{padding:22px 0 40px}
+  .cards{display:grid;grid-template-columns:1fr;gap:14px}
+  .card{
+    background:linear-gradient(180deg,rgba(18,22,39,.75),rgba(15,19,32,.9));
+    border:1px solid var(--line); border-radius:16px; padding:16px;
+    box-shadow: var(--glow), 0 12px 28px rgba(0,0,0,.35);
+    backdrop-filter: blur(8px);
+    transition:.25s transform,.25s box-shadow,.25s border-color;
   }
-  #controls {
-    display: flex;
-    gap: 1em;
-    flex-wrap: wrap;
+  .card:hover{transform:translateY(-1px); box-shadow: 0 0 44px rgba(110,168,254,.25), 0 18px 34px rgba(0,0,0,.45); border-color:#2b365f}
+  label{display:block;margin:8px 0 8px;color:var(--muted);font-size:.95rem}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:760px){.row{grid-template-columns:1fr}}
+  input[type="file"]{
+    width:100%;padding:14px;border:1px dashed #2b345a;border-radius:12px;background:#0a0e1b;color:var(--ink);
+    transition:.2s border-color,.2s background;
   }
-  button, input[type="file"] {
-    padding: 0.5em 1em;
-    font-size: 1em;
-    background: #333;
-    border: none;
-    color: #eee;
-    border-radius: 4px;
-    cursor: pointer;
+  input[type="file"]:hover{border-color:#3a4a86;background:#0b1123}
+  input[type="text"]{
+    width:100%;padding:12px 14px;border:1px solid #2b345a;border-radius:12px;background:#0a0e1b;color:var(--ink);
   }
-  button:disabled {
-    opacity: 0.4;
-    cursor: default;
+  .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+  button{
+    appearance:none;border:1px solid #374783;background:linear-gradient(180deg,#1b2442,#131a33);color:#f2f4ff;
+    padding:12px 14px;border-radius:12px;font-weight:700;letter-spacing:.2px;cursor:pointer;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.35), 0 0 24px rgba(110,168,254,.18);
+    transition:.2s transform,.2s box-shadow,.2s filter;
   }
-  #dropzone {
-    border: 2px dashed #555;
-    border-radius: 8px;
-    padding: 2em;
-    text-align: center;
-    color: #888;
-    user-select: none;
+  button:hover{transform:translateY(-1px); filter:brightness(1.05); box-shadow: 0 12px 26px rgba(0,0,0,.4), 0 0 32px rgba(157,123,255,.22)}
+  button.primary{border-color:#4560bf;background:linear-gradient(180deg,#2a3e86,#1a2452)}
+  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;border:1px solid #2b345a;background:#0a0f20;color:var(--muted);font-size:.88rem}
+  code.inline{padding:1px 6px;border-radius:6px;background:#0b1224;border:1px solid #23305c}
+  .log{height:240px;background:#070b16;border:1px solid #20294a;border-radius:14px;padding:10px;overflow:auto;
+       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+  .log .ok{color:var(--ok)} .log .warn{color:var(--warn)} .log .err{color:var(--err)} .log .muted{color:var(--muted)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr}}
+  .kbd{display:inline-block;padding:3px 6px;border-radius:6px;border:1px solid #2b345a;background:#0a0f20}
+  footer{color:#7f87a0;text-align:center;font-size:.9rem;padding:24px 12px}
+  .shine{position:relative;overflow:hidden}
+  .shine::before{
+    content:""; position:absolute; inset:auto -40% 0 -40%; top:-120%;
+    height:160%; transform:rotate(8deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+    animation: sweep 3.5s linear infinite; pointer-events:none;
   }
-  #dropzone.dragover {
-    border-color: #56caff;
-    color: #56caff;
-    background: #111a;
-  }
+  @keyframes sweep{from{transform:translateX(-60%) rotate(8deg)} to{transform:translateX(60%) rotate(8deg)}}
 </style>
 </head>
 <body>
-<header>Fluxis - Minecraft Bedrock Pack Encryptor (Version 2)</header>
-<main>
-  <div id="dropzone">Drag & Drop Minecraft Pack Folder Here or <input type="file" id="folderInput" webkitdirectory directory multiple /></div>
-  <div id="controls">
-    <input type="file" id="keysFileInput" accept=".db,.txt" />
-    <button id="startBtn" disabled>Start Encryption</button>
-  </div>
-  <div id="log"></div>
-</main>
+  <header>
+    <div class="wrap brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Fluxis — iOS Persona Cape Builder</h1>
+        <div class="subtitle">Drop a template folder and your PNG cape. Fluxis encrypts it (AES-256-CFB8) and packages a ready-to-install zip — all client-side.</div>
+      </div>
+    </div>
+  </header>
 
-<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <main class="wrap">
+    <section class="cards">
+      <div class="card shine">
+        <div class="row">
+          <div>
+            <label>1) Template folder (must already include a cape file like <code class="inline">cape_*.png</code>)</label>
+            <input id="template" type="file" webkitdirectory directory multiple />
+            <div style="margin-top:6px;color:var(--muted)">Structure is preserved. Only the detected cape file is replaced.</div>
+          </div>
+          <div>
+            <label>2) Your cape image (PNG, unencrypted)</label>
+            <input id="cape" type="file" accept="image/png" />
+            <div style="margin-top:6px;color:var(--muted)">Common sizes: 64×32 or 64×64, depending on layout.</div>
+          </div>
+        </div>
+
+        <div class="grid2" style="margin-top:12px">
+          <div>
+            <label>Output zip name</label>
+            <input id="zipName" type="text" placeholder="Defaults to template folder name" />
+          </div>
+          <div>
+            <label>Detected cape filename (auto)</label>
+            <input id="capeName" type="text" readonly placeholder="e.g. cape_pancape.png" />
+          </div>
+        </div>
+
+        <div class="btns" style="margin-top:12px">
+          <button class="primary" id="buildBtn">Build with Fluxis</button>
+          <span class="pill"><strong>Mode</strong> AES-256-CFB8 · IV = first 16 bytes of key</span>
+          <span class="pill"><strong>Client-side</strong> No backend · Works on Netlify</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="grid2" style="align-items:center">
+          <div><strong>Activity</strong></div>
+          <div style="text-align:right">
+            <span class="pill"><strong>Key</strong> <code id="keyShow" class="inline">hidden</code></span>
+            <button id="toggleKey" title="Reveal the AES key used for this format">Show Key</button>
+          </div>
+        </div>
+        <div id="log" class="log" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Made with 💜 by Fluxis — all processing is done locally in your browser.</footer>
 
 <script>
+/* ========= Utility (logs, bytes) ========= */
 (() => {
-  const EXCLUDE = ["manifest.json", "pack_icon.png"];
-  const EXCLUDE_FOLDERS = ["texts"];
-  const UNIVERSAL_KEY = "s5s5ejuDru4uchuF2drUFuthaspAbepE";
+  const logEl = document.getElementById('log');
+  function log(msg, cls=""){ const d=document.createElement('div'); if(cls)d.className=cls; d.textContent=msg; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; }
+  window.__fluxisLog = log;
 
-  let keysDb = {}; // { uuid: key }
-  let folderFiles = [];
-  let manifestJson = null;
-  let manifestUuid = null;
-
-  const logDiv = document.getElementById("log");
-  const startBtn = document.getElementById("startBtn");
-  const keysFileInput = document.getElementById("keysFileInput");
-  const folderInput = document.getElementById("folderInput");
-  const dropzone = document.getElementById("dropzone");
-
-  function log(msg, filename=null) {
-    if (filename) {
-      const a = document.createElement("a");
-      a.textContent = msg;
-      a.href = "#";
-      a.onclick = (e) => {
-        e.preventDefault();
-        const f = folderFiles.find(f => f.name === filename || f.webkitRelativePath.endsWith(filename));
-        if (f) {
-          f.text().then(text => {
-            const win = window.open();
-            if(win) {
-              win.document.body.style.background = "#111";
-              win.document.body.style.color = "#eee";
-              win.document.body.style.whiteSpace = "pre-wrap";
-              win.document.title = filename;
-              win.document.body.textContent = text;
-            } else {
-              alert("Pop-up blocked. Please allow pop-ups to view file.");
-            }
-          });
-        } else {
-          alert("File not found in current pack.");
-        }
-      };
-      logDiv.appendChild(a);
-      logDiv.appendChild(document.createTextNode("\n"));
-    } else {
-      logDiv.appendChild(document.createTextNode(msg + "\n"));
-    }
-    logDiv.scrollTop = logDiv.scrollHeight;
+  function encUtf8(str){ return new TextEncoder().encode(str); }
+  function pathRoot(files){
+    if(!files.length) return "";
+    const p = files[0].webkitRelativePath || files[0].name; const parts=p.split("/");
+    return parts.length>1?parts[0]:"";
   }
+  function relPath(file){
+    const p = file.webkitRelativePath || file.name;
+    return p.replace(/^\.?\/*/, "");
+  }
+  function findCapeFilename(files){
+    const out=[];
+    for(const f of files){
+      const name = f.webkitRelativePath || f.name;
+      if(/cape_.*\.png$/i.test(name)) out.push(name);
+    }
+    if(!out.length) return null;
+    out.sort((a,b)=>a.split("/").length-b.split("/").length);
+    return out[0];
+  }
+  window.__fluxisUtils = { encUtf8, pathRoot, relPath, findCapeFilename };
+})();
+</script>
 
-  async function parseKeysDb(file) {
-    const text = await file.text();
-    keysDb = {};
-    const lines = text.split(/\r?\n/);
-    for (const line of lines) {
-      if (!line.trim() || !line.includes("=")) continue;
-      const [uuid, key] = line.trim().split("=");
-      if (uuid && key && key.length === 32) {
-        keysDb[uuid] = key;
+<!-- ======== Minimal AES-256 block + CFB8 encrypt (no deps) ======== -->
+<script>
+/*
+  Lightweight AES-256 block cipher (encrypt only) + CFB8 mode.
+  Notes:
+    - Key: 32 bytes (AES-256)
+    - Block: 16 bytes
+    - CFB8 (segment size = 8): For each plaintext byte p:
+        e = AES_encrypt(state)[0]; c = e ^ p; shift state left by 1 and append c.
+*/
+(() => {
+  const S = new Uint8Array([
+    99,124,119,123,242,107,111,197, 48,  1,103, 43,254,215,171,118,
+    202,130,201,125,250, 89, 71,240,173,212,162,175,156,164,114,192,
+    183,253,147, 38, 54, 63,247,204, 52,165,229,241,113,216, 49, 21,
+      4,199, 35,195, 24,150,  5,154,  7, 18,128,226,235, 39,178,117,
+      9,131, 44, 26, 27,110, 90,160, 82, 59,214,179, 41,227, 47,132,
+     83,209,  0,237, 32,252,177, 91,106,203,190, 57, 74, 76, 88,207,
+    208,239,170,251, 67, 77, 51,133, 69,249,  2,127, 80, 60,159,168,
+     81,163, 64,143,146,157, 56,245,188,182,218, 33, 16,255,243,210,
+    205, 12, 19,236, 95,151, 68, 23,196,167,126, 61,100, 93, 25,115,
+     96,129, 79,220, 34, 42,144,136, 70,238,184, 20,222, 94, 11,219,
+    224, 50, 58, 10, 73,  6, 36, 92,194,211,172, 98,145,149,228,121,
+    231,200, 55,109,141,213, 78,169,108, 86,244,234,101,122,174,  8,
+    186,120, 37, 46, 28,166,180,198,232,221,116, 31, 75,189,139,138,
+    112, 62,181,102, 72,  3,246, 14, 97, 53, 87,185,134,193, 29,158,
+    225,248,152, 17,105,217,142,148,155, 30,135,233,206, 85, 40,223,
+    140,161,137, 13,191,230, 66,104, 65,153, 45, 15,176, 84,187, 22
+  ]);
+  const RCON = [0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36,0x6C,0xD8,0xAB,0x4D];
+  function rotw(w){ return [w[1],w[2],w[3],w[0]]; }
+  function subw(w){ return [S[w[0]],S[w[1]],S[w[2]],S[w[3]]]; }
+  function xorw(a,b){ return [a[0]^b[0],a[1]^b[1],a[2]^b[2],a[3]^b[3]]; }
+  function xtime(a){ return ((a<<1) ^ ((a&0x80)?0x1b:0)) & 0xff; }
+  function mixcol(a){
+    const [s0,s1,s2,s3]=a;
+    const t = s0 ^ s1 ^ s2 ^ s3;
+    return [
+      s0 ^ t ^ xtime(s0 ^ s1),
+      s1 ^ t ^ xtime(s1 ^ s2),
+      s2 ^ t ^ xtime(s2 ^ s3),
+      s3 ^ t ^ xtime(s3 ^ s0),
+    ];
+  }
+  function keyExpansion(key){
+    // key: 32 bytes → 60 words (4 bytes each) → 15 round keys (0..14)
+    const Nk=8, Nb=4, Nr=14;
+    const w = new Array(Nb*(Nr+1));
+    for(let i=0;i<Nk;i++){
+      w[i]=[key[4*i],key[4*i+1],key[4*i+2],key[4*i+3]];
+    }
+    for(let i=Nk;i<Nb*(Nr+1);i++){
+      let temp=w[i-1];
+      if(i%Nk===0){
+        temp = xorw(subw(rotw(temp)), [RCON[i/Nk],0,0,0]);
+      }else if(i%Nk===4){
+        temp = subw(temp);
       }
+      w[i] = xorw(w[i-Nk], temp);
     }
-    log(`Loaded ${Object.keys(keysDb).length} keys from keys.db`);
+    return w;
   }
-
-  async function readManifest() {
-    const manifestFile = folderFiles.find(f => f.name === "manifest.json" || f.webkitRelativePath.endsWith("/manifest.json"));
-    if (!manifestFile) throw new Error("manifest.json not found in the folder");
-    const jsonText = await manifestFile.text();
-    manifestJson = JSON.parse(jsonText);
-    manifestUuid = manifestJson.header && manifestJson.header.uuid;
-    if (!manifestUuid) throw new Error("UUID not found in manifest.json header");
-    log(`Found manifest UUID: ${manifestUuid}`);
-  }
-
-  function shouldEncrypt(relPath) {
-    const lower = relPath.toLowerCase();
-    for (const excl of EXCLUDE) {
-      if (lower.endsWith(excl)) return false;
-    }
-    for (const exclFolder of EXCLUDE_FOLDERS) {
-      if (lower.includes(`/${exclFolder.toLowerCase()}/`) || lower.startsWith(exclFolder.toLowerCase() + "/")) return false;
-    }
-    return true;
-  }
-
-  // AES-256-CFB-8 encrypt (using CryptoJS)
-  async function aes256Cfb8EncryptAsync(keyStr, dataBytes, onProgress = null) {
-    const key = CryptoJS.enc.Utf8.parse(keyStr);
-    let ivBytes = keyStr.substr(0, 16);
-    let shiftRegister = CryptoJS.enc.Utf8.parse(ivBytes);
-
-    const output = new Uint8Array(dataBytes.length);
-    const chunkSize = 16 * 1024; // 16 KB chunks
-
-    for (let offset = 0; offset < dataBytes.length; offset += chunkSize) {
-      const end = Math.min(offset + chunkSize, dataBytes.length);
-
-      for (let i = offset; i < end; i++) {
-        const encryptedBlock = CryptoJS.AES.encrypt(
-          shiftRegister,
-          key,
-          { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.NoPadding }
-        );
-        const cipherWords = encryptedBlock.ciphertext;
-        const firstByte = (cipherWords.words[0] >>> 24) & 0xff;
-
-        const cipherByte = dataBytes[i] ^ firstByte;
-        output[i] = cipherByte;
-
-        // Update shift register (shift left 1 byte, push cipherByte)
-        const shiftBytes = [];
-        const srWords = shiftRegister.words;
-        for (let w = 0; w < srWords.length; w++) {
-          shiftBytes.push((srWords[w] >>> 24) & 0xff);
-          shiftBytes.push((srWords[w] >>> 16) & 0xff);
-          shiftBytes.push((srWords[w] >>> 8) & 0xff);
-          shiftBytes.push(srWords[w] & 0xff);
-        }
-        shiftBytes.splice(16);
-        shiftBytes.shift();
-        shiftBytes.push(cipherByte);
-        shiftRegister = CryptoJS.lib.WordArray.create(shiftBytes);
-      }
-
-      if (onProgress) onProgress(Math.min(end / dataBytes.length, 1));
-
-      await new Promise(r => setTimeout(r, 0));
-    }
-
-    return output;
-  }
-
-  function generateKey() {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-    let key = "";
-    for(let i=0; i<32; i++) {
-      key += chars.charAt(Math.floor(Math.random()*chars.length));
-    }
-    return key;
-  }
-
-  function getRelPath(file) {
-    return file.webkitRelativePath || file.name;
-  }
-
-  // Create signatures.json content - only manifest.json hashed in a one-line flat JSON array
-  async function createSignaturesJson() {
-    const manifestFile = folderFiles.find(f => f.name === "manifest.json" || f.webkitRelativePath.endsWith("/manifest.json"));
-    if (!manifestFile) throw new Error("manifest.json not found for signatures");
-
-    const manifestBytes = new Uint8Array(await manifestFile.arrayBuffer());
-    const hashWords = CryptoJS.SHA256(CryptoJS.lib.WordArray.create(manifestBytes));
-    const hashBase64 = CryptoJS.enc.Base64.stringify(hashWords);
-
-    const signatures = [{ path: "manifest.json", hash: hashBase64 }];
-    return JSON.stringify(signatures);
-  }
-
-  async function encryptPack() {
-    log("Starting encryption...");
-
-    let universalKey = UNIVERSAL_KEY;
-    log(`Using universal key for contents.json encryption: ${universalKey}`);
-
-    const zip = new JSZip();
-
-    const contentsJson = {
-      version: 1,
-      content: []
-    };
-
-    if (folderFiles.length === 0) {
-      log("No files loaded!");
-      startBtn.disabled = false;
-      return;
-    }
-
-    // Determine root folder name from first file
-    let firstRel = getRelPath(folderFiles[0]).replace(/\\/g, "/");
-    let rootFolderName = firstRel.includes("/") ? firstRel.split("/")[0] : "packroot";
-    log(`Root folder in ZIP will be: ${rootFolderName}`);
-
-    // Encrypt files (except manifest.json, pack_icon.png, texts folder)
-    for (const file of folderFiles) {
-      const relPathRaw = getRelPath(file).replace(/\\/g, "/");
-      const insidePackRelPath = relPathRaw.startsWith(rootFolderName + "/")
-        ? relPathRaw.slice(rootFolderName.length + 1)
-        : relPathRaw;
-
-      const isDir = file.type === "" && relPathRaw.endsWith("/");
-      const encryptThis = shouldEncrypt(relPathRaw);
-
-      if (isDir) {
-        // Directories as entries with trailing slash (not encrypted)
-        contentsJson.content.push({ path: insidePackRelPath + "/" });
-        log(`Directory: ${insidePackRelPath}/ (not encrypted)`);
-        continue;
-      }
-
-      const data = new Uint8Array(await file.arrayBuffer());
-
-      if (encryptThis) {
-        try {
-          const fileKey = generateKey();
-          const encryptedData = await aes256Cfb8EncryptAsync(fileKey, data, progress => {
-            log(`Encrypting ${insidePackRelPath}: ${(progress*100).toFixed(1)}%`);
-          });
-          zip.folder(rootFolderName).file(insidePackRelPath, encryptedData);
-          contentsJson.content.push({ path: insidePackRelPath, key: fileKey });
-          log(`Encrypted file: ${insidePackRelPath} with key ${fileKey}`);
-        } catch (ex) {
-          log(`Error encrypting ${insidePackRelPath}: ${ex.message}`);
-        }
-      } else {
-        zip.folder(rootFolderName).file(insidePackRelPath, data);
-        contentsJson.content.push({ path: insidePackRelPath });
-        log(`Skipped encryption for: ${insidePackRelPath}`);
-      }
-    }
-
-    // Create signatures.json, encrypt it with random key, add inside root folder
-    try {
-      const sigJsonStr = await createSignaturesJson();
-      const sigKey = generateKey();
-      const sigBytes = new TextEncoder().encode(sigJsonStr);
-      const encryptedSig = await aes256Cfb8EncryptAsync(sigKey, sigBytes, progress => {
-        log(`Encrypting signatures.json: ${(progress*100).toFixed(1)}%`);
-      });
-      zip.folder(rootFolderName).file("signatures.json", encryptedSig);
-      contentsJson.content.push({ path: "signatures.json", key: sigKey });
-      log("Added encrypted signatures.json inside root folder");
-    } catch (ex) {
-      log("Error creating/encrypting signatures.json: " + ex.message);
-    }
-
-    // Encrypt contents.json with universal key, add inside root folder (no entry for contents.json inside contents.json)
-    try {
-      const contentsBytes = new TextEncoder().encode(JSON.stringify(contentsJson, null, 2));
-      const encryptedContents = await aes256Cfb8EncryptAsync(universalKey, contentsBytes, progress => {
-        log(`Encrypting contents.json: ${(progress*100).toFixed(1)}%`);
-      });
-      zip.folder(rootFolderName).file("contents.json", encryptedContents);
-      log("Added encrypted contents.json inside root folder");
-    } catch (ex) {
-      log("Error encrypting contents.json: " + ex.message);
-      zip.folder(rootFolderName).file("contents.json", JSON.stringify(contentsJson, null, 2));
-    }
-
-    log("Generating zip...");
-    const contentZip = await zip.generateAsync({ type: "blob" });
-
-    const dlLink = document.createElement("a");
-    dlLink.href = URL.createObjectURL(contentZip);
-    dlLink.download = `${manifestUuid || "pack"}_encrypted.zip`;
-    dlLink.textContent = "Download Encrypted Pack ZIP";
-    dlLink.style.display = "block";
-    dlLink.style.marginTop = "1em";
-
-    document.body.appendChild(dlLink);
-
-    log("Encryption complete! Click the download link above.");
-    startBtn.disabled = false;
-  }
-
-  function checkReady() {
-    startBtn.disabled = !folderFiles.length || !manifestUuid;
-  }
-
-  async function loadFolderFiles(filesList) {
-    folderFiles = [];
-    for (const file of filesList) {
-      folderFiles.push(file);
-    }
-    log(`Loaded ${folderFiles.length} files from folder.`);
-
-    try {
-      await readManifest();
-      checkReady();
-    } catch (ex) {
-      log("Error reading manifest.json: " + ex.message);
-      manifestUuid = null;
-      checkReady();
+  function addRoundKey(state, rk, off){
+    for(let c=0;c<4;c++){
+      state[0][c]^=rk[off+c][0];
+      state[1][c]^=rk[off+c][1];
+      state[2][c]^=rk[off+c][2];
+      state[3][c]^=rk[off+c][3];
     }
   }
+  function subBytes(state){
+    for(let r=0;r<4;r++)for(let c=0;c<4;c++) state[r][c]=S[state[r][c]];
+  }
+  function shiftRows(state){
+    state[1].push(state[1].shift());
+    state[2].push(state[2].shift()); state[2].push(state[2].shift());
+    state[3].unshift(state[3].pop());
+  }
+  function mixColumns(state){
+    for(let c=0;c<4;c++){
+      const col=[state[0][c],state[1][c],state[2][c],state[3][c]];
+      const m = mixcol(col);
+      state[0][c]=m[0]; state[1][c]=m[1]; state[2][c]=m[2]; state[3][c]=m[3];
+    }
+  }
+  function encryptBlock(keySched, input16){
+    // state is 4x4 (rowsxcols), column-major from input
+    const Nr=14;
+    const state=[[],[],[],[]];
+    for(let i=0;i<16;i++) state[i&3][(i/4)|0]=input16[i];
+    addRoundKey(state,keySched,0);
+    for(let round=1; round<Nr; round++){
+      subBytes(state); shiftRows(state); mixColumns(state); addRoundKey(state,keySched,4*round);
+    }
+    subBytes(state); shiftRows(state); addRoundKey(state,keySched,4*Nr);
+    const out=new Uint8Array(16);
+    for(let i=0;i<16;i++) out[i]=state[i&3][(i/4)|0];
+    return out;
+  }
+  function cfb8Encrypt(keyBytes, iv16, plain){
+    const ks = keyExpansion(keyBytes);
+    const state = new Uint8Array(iv16); // 16
+    const out = new Uint8Array(plain.length);
+    for(let i=0;i<plain.length;i++){
+      const e = encryptBlock(ks, state)[0];
+      const c = e ^ plain[i];
+      // shift left 1 byte, append c
+      for(let j=0;j<15;j++) state[j]=state[j+1];
+      state[15]=c;
+      out[i]=c;
+    }
+    return out;
+  }
+  window.__fluxisAES = { cfb8Encrypt };
+})();
+</script>
 
-  dropzone.addEventListener("dragover", e => {
-    e.preventDefault();
-    dropzone.classList.add("dragover");
-  });
-  dropzone.addEventListener("dragleave", e => {
-    dropzone.classList.remove("dragover");
-  });
-  dropzone.addEventListener("drop", e => {
-    e.preventDefault();
-    dropzone.classList.remove("dragover");
-    if (e.dataTransfer.items) {
-      const files = [];
-      const traverseFileTree = async (item, path = "") => {
-        if (item.isFile) {
-          const file = await new Promise(resolve => item.file(resolve));
-          file.webkitRelativePath = path + file.name;
-          files.push(file);
-        } else if (item.isDirectory) {
-          const dirReader = item.createReader();
-          let entries = await new Promise(res => dirReader.readEntries(res));
-          for (const entry of entries) {
-            await traverseFileTree(entry, path + item.name + "/");
-          }
-        }
-      };
+<!-- ======== Tiny ZIP (store, no compression) + CRC32 ======== -->
+<script>
+(() => {
+  // CRC32 table
+  const table = (() => {
+    let c, t=new Uint32Array(256);
+    for(let n=0;n<256;n++){
+      c=n;
+      for(let k=0;k<8;k++) c = c & 1 ? 0xEDB88320 ^ (c>>>1) : (c>>>1);
+      t[n]=c>>>0;
+    }
+    return t;
+  })();
+  function crc32(u8){
+    let c = 0 ^ (-1);
+    for(let i=0;i<u8.length;i++) c = (c>>>8) ^ table[(c ^ u8[i]) & 0xFF];
+    return (c ^ (-1)) >>> 0;
+  }
+  function le16(n){ return new Uint8Array([n&255,(n>>>8)&255]); }
+  function le32(n){ return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]); }
+  function dosDateTime(time){
+    // use current time for simplicity
+    const d = time ? new Date(time) : new Date();
+    let dt = ((d.getHours()<<11) | (d.getMinutes()<<5) | (d.getSeconds()>>1)) & 0xFFFF;
+    let dd = ((((d.getFullYear()-1980)<<9) | ((d.getMonth()+1)<<5) | d.getDate())) & 0xFFFF;
+    return {dt,dd};
+  }
+  // Build a ZIP with "store" method (0). files: { path: Uint8Array }
+  function zipStoreSync(files){
+    const fileEntries = [];
+    const centralRecords = [];
+    let offset = 0;
+    const chunks = [];
 
-      const items = [...e.dataTransfer.items];
-      Promise.all(items.map(item => traverseFileTree(item.webkitGetAsEntry()))).then(() => {
-        loadFolderFiles(files);
-      });
-    } else {
-      loadFolderFiles(e.dataTransfer.files);
+    for(const path in files){
+      const data = files[path];
+      const name = new TextEncoder().encode(path);
+      const {dt,dd} = dosDateTime();
+      const crc = crc32(data);
+      const comp = data; // store
+      const compSize = comp.length;
+      const unCompSize = data.length;
+
+      // Local header
+      const lh = [
+        le32(0x04034b50),       // signature
+        le16(20),               // version needed
+        le16(0),                // flags
+        le16(0),                // method = store
+        le16(dt), le16(dd),     // time, date
+        le32(crc),              // crc32
+        le32(compSize),         // comp size
+        le32(unCompSize),       // uncomp size
+        le16(name.length),      // file name len
+        le16(0)                 // extra len
+      ];
+      const localHeader = concatBytes(...lh, name, comp);
+      chunks.push(localHeader);
+      const localOffset = offset;
+      offset += localHeader.length;
+
+      // Central directory header
+      const cd = [
+        le32(0x02014b50), // sig
+        le16(20),         // version made by
+        le16(20),         // version needed
+        le16(0),          // flags
+        le16(0),          // method
+        le16(dt), le16(dd),
+        le32(crc),
+        le32(compSize),
+        le32(unCompSize),
+        le16(name.length),
+        le16(0),          // extra
+        le16(0),          // comment
+        le16(0),          // disk start
+        le16(0),          // int attrs
+        le32(0),          // ext attrs
+        le32(localOffset),
+        name
+      ];
+      const cdRec = concatBytes(...cd);
+      centralRecords.push(cdRec);
+    }
+
+    const centralDir = concatBytes(...centralRecords);
+    const eocd = concatBytes(
+      le32(0x06054b50),
+      le16(0), le16(0),
+      le16(centralRecords.length), le16(centralRecords.length),
+      le32(centralDir.length),
+      le32(offset),
+      le16(0) // comment length
+    );
+
+    return new Blob([concatBytes(...chunks, centralDir, eocd)], {type:"application/zip"});
+  }
+  function concatBytes(...arrs){
+    let len=0; for(const a of arrs) len += a.length;
+    const out = new Uint8Array(len);
+    let off=0; for(const a of arrs){ out.set(a, off); off+=a.length; }
+    return out;
+  }
+  window.__fluxisZip = { zipStoreSync };
+})();
+</script>
+
+<!-- ======== App logic (Fluxis) ======== -->
+<script>
+(() => {
+  const log = window.__fluxisLog;
+  const { encUtf8, pathRoot, relPath, findCapeFilename } = window.__fluxisUtils;
+  const { cfb8Encrypt } = window.__fluxisAES;
+  const { zipStoreSync } = window.__fluxisZip;
+
+  const tplInput = document.getElementById('template');
+  const capeInput = document.getElementById('cape');
+  const capeNameEl = document.getElementById('capeName');
+  const zipNameEl  = document.getElementById('zipName');
+  const buildBtn   = document.getElementById('buildBtn');
+  const keyShow    = document.getElementById('keyShow');
+  const toggleKey  = document.getElementById('toggleKey');
+
+  // Fixed key from your Python script — ASCII bytes; IV = first 16 bytes
+  const KEY_STR = "gB0GBZnhk8ytnMnQGL7fvHOgGsfQToZA";
+
+  function showKey(show){ keyShow.textContent = show ? (KEY_STR + "  (IV=" + KEY_STR.slice(0,16) + ")") : "hidden"; }
+  toggleKey.addEventListener('click', () => showKey(keyShow.textContent === "hidden"));
+
+  tplInput.addEventListener('change', () => {
+    log(`Template selected: ${tplInput.files.length} files.`, "muted");
+    const nm = findCapeFilename([...tplInput.files]);
+    capeNameEl.value = nm || "";
+    if(!zipNameEl.value){
+      const root = pathRoot([...tplInput.files]) || "fluxis_cape";
+      zipNameEl.value = root.replace(/[/\\]+$/,"") + ".zip";
     }
   });
 
-  folderInput.addEventListener("change", e => {
-    loadFolderFiles(e.target.files);
-  });
+  function fileToU8(file){ return file.arrayBuffer().then(b=>new Uint8Array(b)); }
 
-  keysFileInput.addEventListener("change", e => {
-    const f = e.target.files[0];
-    if (!f) return;
-    parseKeysDb(f);
-  });
+  buildBtn.addEventListener('click', async () => {
+    try{
+      const tfs = [...tplInput.files];
+      if(!tfs.length){ log("Please select a template folder.", "err"); return; }
+      if(!capeInput.files.length){ log("Please select your PNG cape.", "err"); return; }
 
-  startBtn.addEventListener("click", () => {
-    startBtn.disabled = true;
-    encryptPack();
-  });
+      log("Reading inputs…","muted");
+      const capeDetectedPath = (capeNameEl.value && capeNameEl.value.trim()) || findCapeFilename(tfs);
+      if(!capeDetectedPath){ log('No existing cape file found in template (expected something like "cape_*.png").', "err"); return; }
 
-  log("Ready. Drag & drop a Minecraft pack folder or select folder using the picker.");
-  log("Load a keys.db file if you want to use custom keys.");
+      // Build files map
+      const filesMap = {};
+      for(const f of tfs){ filesMap[relPath(f)] = await fileToU8(f); }
+
+      // Encrypt cape
+      const keyBytes = encUtf8(KEY_STR);
+      const iv = keyBytes.slice(0,16);
+      const plainCape = await fileToU8(capeInput.files[0]);
+
+      log(`Encrypting cape (${plainCape.length} bytes) using AES-256-CFB8…`);
+      const encCape = cfb8Encrypt(keyBytes, iv, plainCape);
+      log(`Encrypted → ${encCape.length} bytes.`, "ok");
+
+      // Replace detected cape file
+      const norm = capeDetectedPath.replace(/^\.?\/*/,"");
+      filesMap[norm] = encCape;
+      log(`Replaced "${norm}" inside the pack.`, "ok");
+
+      // Zip (store)
+      log("Packaging zip (store, no compression)…","muted");
+      const blob = zipStoreSync(filesMap);
+      const outName = (zipNameEl.value && zipNameEl.value.trim()) || ((pathRoot(tfs) || "fluxis_cape") + ".zip");
+
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = outName;
+      document.body.appendChild(a); a.click(); a.remove();
+      log(`Done. Downloaded "${outName}".`, "ok");
+      log("Tip: Sideload to iOS with your normal method.", "muted");
+    }catch(err){
+      console.error(err);
+      log("Error: " + (err && err.message ? err.message : String(err)), "err");
+    }
+  });
 })();
 </script>
 </body>
