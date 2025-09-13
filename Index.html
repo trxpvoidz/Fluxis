@@ -1,505 +1,174 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Minecraft Legacy → Modern Skin Converter — Full</title>
-<style>
-  :root {
-    --bg:#0f1720; --card:#0b1220; --muted:#9fb7c9; --accent:#06b6d4; --panel:#142336;
-    --light-bg:#f6f9fb; --light-text:#081221;
-  }
-  html,body {height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-  body.light { background: var(--light-bg); color: var(--light-text); }
-  body { background: var(--bg); color: #e6eef8; display:flex; flex-direction:column; align-items:center; padding:12px; box-sizing:border-box; }
-  .app { width:100%; max-width:1100px; }
-  header{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:12px;}
-  header h1{ margin:0; font-size:18px; letter-spacing:0.2px }
-  .controls-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .card{ background:linear-gradient(180deg, #07101a, #07101a); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.04); box-shadow:0 6px 24px rgba(1,6,12,0.6); }
-  .u-btn{ background:var(--panel); color:inherit; border:1px solid rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; cursor:pointer; }
-  .u-btn.primary{ background:linear-gradient(90deg,var(--accent),#7dd3fc); color:#002; font-weight:700; }
-  .u-input{ display:inline-block; }
-  input[type=file]{ display:none; }
-  .row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-top:12px; }
-  .col { display:flex; flex-direction:column; gap:8px; }
-  .preview-2d { width:160px; height:160px; image-rendering:pixelated; border:1px solid rgba(255,255,255,0.06); background:#020408; }
-  .label { font-size:13px; color:var(--muted); }
-  .subtitle { font-size:13px; color:var(--muted); margin:0; }
-  .toggles { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .toggles label { background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-flex; gap:8px; align-items:center; }
-  .viewer3d { width:420px; height:420px; border-radius:8px; overflow:hidden; background:linear-gradient(180deg,#07101a,#041018); border:1px solid rgba(255,255,255,0.04); }
-  .meta { font-size:13px; color:var(--muted); }
-  footer { margin-top:14px; font-size:13px; color:var(--muted); text-align:center; }
-  .chip { background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-weight:600; }
-  /* Responsive */
-  @media (max-width:980px){ .viewer3d{ width:320px; height:320px; } .preview-2d{ width:128px; height:128px } }
-  @media (max-width:640px){ header{flex-direction:column;align-items:flex-start;gap:8px} .row{flex-direction:column} .viewer3d{ width:100%; height:360px } }
-</style>
+  <meta charset="UTF-8">
+  <title>Legacy to Modern Skin Converter</title>
+  <style>
+    body {
+      margin: 0;
+      background: #202020;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    h1 {
+      margin: 10px;
+      font-size: 20px;
+    }
+    canvas { background: #111; margin: 10px; touch-action: none; }
+    #controls { margin: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    input[type="file"], button {
+      background: #333; color: #fff; border: none; padding: 8px 12px; cursor: pointer;
+    }
+    button:disabled { background: #555; cursor: not-allowed; }
+    button:hover:enabled { background: #666; }
+    #log {
+      width: 90%;
+      max-width: 600px;
+      background: #111;
+      border: 1px solid #444;
+      padding: 5px;
+      margin: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      height: 100px;
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div>
-        <h1>Minecraft Legacy → Modern Skin Converter</h1>
-        <div class="subtitle">Auto-detects slim/wide, converts 64×32 → 64×64, 2D + 3D previews, toggles & animations.</div>
-      </div>
-
-      <div class="controls-row">
-        <label class="u-btn">
-          <input id="fileInput" type="file" accept="image/png">
-          Upload PNG
-        </label>
-        <button id="convertBtn" class="u-btn primary">Convert Now</button>
-        <a id="downloadBtn" class="u-btn" style="display:none">Download Modern Skin</a>
-        <button id="toggleThemeBtn" class="u-btn">Toggle Light</button>
-      </div>
-    </header>
-
-    <div class="card">
-      <div class="row">
-        <div class="col" style="min-width:200px;">
-          <div style="display:flex;gap:12px;align-items:center;">
-            <div>
-              <div class="label">Original (Before)</div>
-              <canvas id="before2d" class="preview-2d" width="160" height="160" aria-label="Original skin preview"></canvas>
-            </div>
-            <div>
-              <div class="label">Converted (After)</div>
-              <canvas id="after2d" class="preview-2d" width="160" height="160" aria-label="Converted skin preview"></canvas>
-            </div>
-          </div>
-
-          <div style="margin-top:8px;">
-            <div class="meta">Detected: <span id="detectedLabel" class="chip">—</span></div>
-            <div class="meta">Dimensions: <span id="dimsLabel" class="chip">—</span></div>
-          </div>
-
-          <div style="margin-top:10px" class="toggles">
-            <label><input type="checkbox" id="animToggle"> Animation</label>
-            <label>Anim mode:
-              <select id="animMode" class="u-btn" style="padding:6px 8px; border-radius:6px;">
-                <option value="idle">Idle</option>
-                <option value="walk">Walk</option>
-                <option value="run">Run</option>
-                <option value="spin">Spin</option>
-              </select>
-            </label>
-            <label><input type="checkbox" id="showGrid"> Ground Grid</label>
-            <label><input type="checkbox" id="autoRotate"> Auto-rotate</label>
-          </div>
-
-          <div style="margin-top:10px;">
-            <div class="label">Model parts (3D viewer)</div>
-            <div class="toggles" id="partToggles">
-              <label><input type="checkbox" data-part="head" checked>Head</label>
-              <label><input type="checkbox" data-part="body" checked>Body</label>
-              <label><input type="checkbox" data-part="leftArm" checked>Left Arm</label>
-              <label><input type="checkbox" data-part="rightArm" checked>Right Arm</label>
-              <label><input type="checkbox" data-part="leftLeg" checked>Left Leg</label>
-              <label><input type="checkbox" data-part="rightLeg" checked>Right Leg</label>
-              <label><input type="checkbox" data-part="hat" checked>Hat</label>
-              <label><input type="checkbox" data-part="jacket" checked>Jacket</label>
-              <label><input type="checkbox" data-part="leftSleeve" checked>Left Sleeve</label>
-              <label><input type="checkbox" data-part="rightSleeve" checked>Right Sleeve</label>
-              <label><input type="checkbox" data-part="leftPants" checked>Left Pants</label>
-              <label><input type="checkbox" data-part="rightPants" checked>Right Pants</label>
-            </div>
-
-            <div style="margin-top:8px;">
-              <button id="resetParts" class="u-btn">Reset All Parts</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="col" style="flex:1;min-width:320px;">
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
-            <div style="flex:1">
-              <div class="label">3D Preview — Original</div>
-              <div id="viewerBefore" class="viewer3d"></div>
-            </div>
-            <div style="flex:1">
-              <div class="label">3D Preview — Converted</div>
-              <div id="viewerAfter" class="viewer3d"></div>
-            </div>
-          </div>
-
-          <div style="margin-top:10px; display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <div class="label">Extras:</div>
-            <button id="centerCameras" class="u-btn">Center Cameras</button>
-            <button id="fitBoth" class="u-btn">Fit Both</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <footer class="card" style="margin-top:12px; text-align:left;">
-      <strong>Notes:</strong> This tool <em>inspects</em> and converts legacy skins to modern format. It auto-detects arm width and applies the proper mapping. No drawing or pixel-editing is included. Works on desktop & mobile (touch interactions supported).<br><br>
-      Want the repo packaged (README + demo)? Say "repo" and I'll give you a zip-ready structure.
-    </footer>
+  <h1>Legacy → Modern Minecraft Skin Converter</h1>
+  <div id="controls">
+    <input type="file" id="fileInput" accept="image/png">
+    <button id="downloadBtn" disabled>Download Modern Skin</button>
   </div>
+  <div>
+    <h3>Before</h3>
+    <canvas id="beforeCanvas" width="300" height="400"></canvas>
+  </div>
+  <div>
+    <h3>After</h3>
+    <canvas id="afterCanvas" width="300" height="400"></canvas>
+  </div>
+  <div id="log"></div>
 
-  <!-- External libs: three.js + skinview3d (viewer lib that handles Minecraft player rendering) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.4/bundle/skinview3d.min.js"></script>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.3/bundle/skinview3d.bundle.js"></script>
   <script>
-  // —————————————————————————————————————————————
-  // Utilities & UI wiring
-  // —————————————————————————————————————————————
-  const fileInput = document.getElementById('fileInput');
-  const convertBtn = document.getElementById('convertBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const before2d = document.getElementById('before2d');
-  const after2d = document.getElementById('after2d');
-  const detectedLabel = document.getElementById('detectedLabel');
-  const dimsLabel = document.getElementById('dimsLabel');
-  const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+    const fileInput = document.getElementById("fileInput");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const logBox = document.getElementById("log");
 
-  const animToggle = document.getElementById('animToggle');
-  const animMode = document.getElementById('animMode');
-  const showGrid = document.getElementById('showGrid');
-  const autoRotate = document.getElementById('autoRotate');
-  const resetPartsBtn = document.getElementById('resetParts');
-  const partTogglesContainer = document.getElementById('partToggles');
+    const beforeViewer = new skinview3d.SkinViewer({
+      canvas: document.getElementById("beforeCanvas"),
+      width: 300,
+      height: 400,
+      skin: null
+    });
+    beforeViewer.controls.enableZoom = true;
+    beforeViewer.controls.enableRotate = true;
 
-  let loadedImage = null;
-  let convertedCanvas = null;
-  let detectedSlim = false;
+    const afterViewer = new skinview3d.SkinViewer({
+      canvas: document.getElementById("afterCanvas"),
+      width: 300,
+      height: 400,
+      skin: null
+    });
+    afterViewer.controls.enableZoom = true;
+    afterViewer.controls.enableRotate = true;
 
-  // skinview3d viewers
-  const viewerBefore = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerBefore'), width: undefined, height: undefined });
-  const viewerAfter  = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerAfter'), width: undefined, height: undefined });
+    let convertedSkin = null;
 
-  // make viewer responsive to container
-  function createCanvasFor(containerSelectorOrElement){
-    const el = (typeof containerSelectorOrElement === 'string') ? document.querySelector(containerSelectorOrElement) : containerSelectorOrElement;
-    el.innerHTML = '';
-    const c = document.createElement('canvas');
-    c.style.width = '100%';
-    c.style.height = '100%';
-    el.appendChild(c);
-    return c;
-  }
+    function log(msg) {
+      logBox.innerText += msg + "\\n";
+      logBox.scrollTop = logBox.scrollHeight;
+    }
 
-  // apply default viewer options
-  [viewerBefore, viewerAfter].forEach(v=>{
-    v.controls.enableZoom = true;
-    v.controls.enableRotate = true;
-    v.controls.enablePan = false;
-    v.camera.position.set(0, 1.6, 3);
-    v.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const dl = new THREE.DirectionalLight(0xffffff, 0.7);
-    dl.position.set(5,10,7); v.scene.add(dl);
-    v.setSize( Math.min(420, v.canvas.clientWidth), Math.min(420, v.canvas.clientHeight) );
-  });
+    function detectSlim(ctx) {
+      // Check right arm width from legacy skin (x=54, y=20 → transparent if slim)
+      let imgData = ctx.getImageData(54, 20, 1, 12).data;
+      let opaqueCount = 0;
+      for (let i = 0; i < imgData.length; i += 4) {
+        if (imgData[i + 3] > 0) opaqueCount++;
+      }
+      return opaqueCount === 0; // if empty → slim arms
+    }
 
-  // handle theme toggle
-  toggleThemeBtn.addEventListener('click', ()=>{
-    document.body.classList.toggle('light');
-    toggleThemeBtn.textContent = document.body.classList.contains('light') ? 'Toggle Dark' : 'Toggle Light';
-  });
+    function convertLegacyToModern(img) {
+      const out = document.createElement("canvas");
+      out.width = 64; out.height = 64;
+      const ctx = out.getContext("2d");
 
-  // file input handling
-  fileInput.addEventListener('change', e => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    readSkinFile(f);
-  });
+      if (img.height === 64) {
+        // Already modern → just draw
+        ctx.drawImage(img, 0, 0);
+        return out;
+      }
 
-  // also support drag & drop on page
-  document.body.addEventListener('dragover', e=>{ e.preventDefault(); });
-  document.body.addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) readSkinFile(f); });
+      // Draw legacy 64x32 in top half
+      ctx.drawImage(img, 0, 0);
 
-  function readSkinFile(file){
-    if (!file.type.includes('png')) { alert('Please upload a PNG skin.'); return; }
-    const r = new FileReader();
-    r.onload = ev => {
-      const img = new Image();
-      img.onload = () => {
-        loadedImage = img;
-        dimsLabel.textContent = img.width + '×' + img.height;
-        drawToCanvas(before2d, img, 160);
-        // auto-detect slim/wide
-        detectedSlim = detectSlimModel(img);
-        detectedLabel.textContent = detectedSlim ? 'Slim (Alex)' : 'Wide (Steve)';
+      // Copy arms/legs to bottom half (new layers)
+      ctx.drawImage(img, 0, 16, 16, 16, 16, 48, 16, 16);   // Left leg
+      ctx.drawImage(img, 40, 16, 16, 16, 32, 48, 16, 16);  // Right leg
+      ctx.drawImage(img, 0, 16, 16, 16, 0, 48, 16, 16);    // Left leg second layer
+      ctx.drawImage(img, 40, 16, 16, 16, 48, 48, 16, 16);  // Right leg second layer
+
+      ctx.drawImage(img, 32, 16, 16, 16, 48, 48, 16, 16);  // Right arm copy
+      ctx.drawImage(img, 32, 16, 16, 16, 32, 48, 16, 16);  // Left arm copy
+
+      return out;
+    }
+
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const tmp = document.createElement("canvas");
+          tmp.width = img.width; tmp.height = img.height;
+          const ctx = tmp.getContext("2d");
+          ctx.drawImage(img, 0, 0);
+
+          let slim = false;
+          if (img.height === 32) {
+            slim = detectSlim(ctx);
+            log("Detected legacy skin: " + (slim ? "Slim (Alex)" : "Wide (Steve)"));
+          } else if (img.height === 64) {
+            log("Detected modern skin");
+          } else {
+            log("Invalid skin size: " + img.width + "x" + img.height);
+            return;
+          }
+
+          const modernCanvas = convertLegacyToModern(img);
+          convertedSkin = modernCanvas;
+
+          beforeViewer.loadSkin(img);
+          afterViewer.loadSkin(modernCanvas.toDataURL());
+
+          downloadBtn.disabled = false;
+          log("Conversion complete!");
+        };
+        img.src = ev.target.result;
       };
-      img.src = ev.target.result;
-    };
-    r.readAsDataURL(file);
-  }
-
-  // quick draw utility for the 2D preview canvases, preserves pixel artness
-  function drawToCanvas(canvas, img, displaySize=160){
-    const ctx = canvas.getContext('2d');
-    // center the texture in canvas and upscale nearest-neighbor
-    const scale = Math.min(displaySize / img.width, displaySize / img.height);
-    const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-    canvas.width = w; canvas.height = h;
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img, 0,0, img.width, img.height, 0,0, w, h);
-  }
-
-  // —————————————————————————————————————————————
-  // Slim detection:
-  // We sample a small vertical slice within the expected right-arm region of legacy skins.
-  // Many slim-arm legacy skins leave the outermost column transparent. We'll test alpha presence.
-  // —————————————————————————————————————————————
-  function detectSlimModel(img){
-    // Only run when legacy-size (64x32) or scaled equivalent
-    const w = img.width, h = img.height;
-    // work on a temporary canvas to sample pixels
-    const tmp = document.createElement('canvas');
-    tmp.width = w; tmp.height = h;
-    const ctx = tmp.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    // right-arm front in 64x32: x=44..47, y=16..31 (4x16). For slim, outer column (x=47) is often empty.
-    // We'll sample column x=47 (1px wide) across a few rows.
-    // If width differs (128 etc), scale coordinate proportionally.
-    const scaleX = w / 64;
-    const scaleY = h / 32;
-    const sampleX = Math.round(47 * scaleX);
-    const sy = Math.round(16 * scaleY);
-    const sh = Math.max(4, Math.round(12 * scaleY)); // sample at least a vertical chunk
-    try {
-      const data = ctx.getImageData(sampleX, sy, 1, sh).data;
-      let opaque = 0;
-      for (let i = 0; i < data.length; i += 4) if (data[i+3] > 12) opaque++;
-      // heuristics: if very few opaque pixels in outer column -> slim (3px arm) else wide
-      return opaque < (sh * 0.45);
-    } catch (e) {
-      // if sampling fails, default to wide
-      return false;
-    }
-  }
-
-  // —————————————————————————————————————————————
-  // Conversion logic: legacy 64×32 -> modern 64×64
-  // - duplicates/copys the missing second-layer slots (arms & legs)
-  // - uses detectedSlim to pick 3px vs 4px arm copying
-  // - leaves top-half (head/body front/back) intact
-  // - does NOT perform painting/editing of pixels beyond the minimal copies
-  // —————————————————————————————————————————————
-  function convertLegacyToModern(img, slim){
-    // normalize larger resolutions (e.g., 128x64) by downscaling proportionally to 64×N if necessary
-    let sourceCanvas = document.createElement('canvas');
-    let sw = img.width, sh = img.height;
-    let scale = 1;
-    if (sw === 128) { scale = 0.5; sw = 64; sh = Math.round(sh * scale); }
-    sourceCanvas.width = sw; sourceCanvas.height = sh;
-    const sctx = sourceCanvas.getContext('2d');
-    sctx.imageSmoothingEnabled = false;
-    if (scale !== 1) sctx.drawImage(img, 0, 0, sw, sh);
-    else sctx.drawImage(img, 0, 0);
-
-    if (!(sw === 64 && (sh === 32 || sh === 64))) {
-      throw new Error('Unsupported dimensions. Expected legacy 64×32 (or 128 scaled).');
-    }
-
-    // create destination 64×64
-    const dst = document.createElement('canvas');
-    dst.width = 64; dst.height = 64;
-    const dctx = dst.getContext('2d');
-    dctx.imageSmoothingEnabled = false;
-    // clear and draw original top half
-    dctx.clearRect(0,0,64,64);
-    dctx.drawImage(sourceCanvas, 0, 0);
-
-    // Copy logic (coordinates follow vanilla mapping)
-    // Legs: right leg base in legacy at (4,16) -> new right leg overlay at (20,48)
-    // left leg overlay: copy right leg base into left leg overlay area (16,48)
-    // Arms: right arm base in legacy at (40,16) -> new right arm overlay at (32,48)
-    // left arm overlay: copy right arm base into left arm overlay area (36? depends on slim/wide)
-    // We'll copy blocks carefully and mirror when needed.
-
-    // Copy legs (4px width)
-    try {
-      // right leg base (legacy) => right leg overlay
-      dctx.drawImage(sourceCanvas, 4, 16, 4, 16, 20, 48, 4, 16);
-      // left leg overlay: mirror of right leg base (paste into 16,48)
-      dctx.drawImage(sourceCanvas, 4, 16, 4, 16, 16, 48, 4, 16);
-    } catch(e){ console.warn('leg copy failed', e); }
-
-    // Copy arms: use slim/wide widths
-    const armWidth = slim ? 3 : 4;
-    // Right arm base in legacy is at (40,16)
-    try {
-      dctx.drawImage(sourceCanvas, 40, 16, armWidth, 16, 36, 48, armWidth, 16); // left arm overlay (from right arm base)
-      // Also copy to right arm overlay region if needed (some mappings)
-      // For Steve (4px) also copy full 4px block to area (44,16) -> overlay (??). We'll keep minimal mapping to fill overlays.
-      if (!slim) {
-        // For wide arms, also ensure the main 4px block exists in the modern overlay
-        dctx.drawImage(sourceCanvas, 40, 16, 4, 16, 32, 48, 4, 16);
-      } else {
-        // For slim, paste 3px into the exact modern region (32..35), then mirror into 36..38 as needed
-        dctx.drawImage(sourceCanvas, 40, 16, 3, 16, 32, 48, 3, 16);
-      }
-    } catch(e){ console.warn('arm copy failed', e); }
-
-    // Some additional conservative fills to maximize compatibility:
-    // copy accessory overlay areas (simple approach): copy head region into hat overlay area to avoid missing hat pixels
-    try {
-      // head front/back and overlays already occupy top-left; but ensure hat area isn't transparent if skin uses older format
-      // no-op conservative default: nothing destructive
-    } catch(e){}
-
-    return dst;
-  }
-
-  // —————————————————————————————————————————————
-  // Render converted result to viewers & update UI
-  // —————————————————————————————————————————————
-  function applyConversionAndPreview(){
-    if (!loadedImage) { alert('No image loaded. Upload a legacy 64×32 PNG first.'); return; }
-    try {
-      convertedCanvas = convertLegacyToModern(loadedImage, detectedSlim);
-    } catch (err) {
-      alert('Conversion error: ' + (err && err.message ? err.message : err));
-      return;
-    }
-    // 2D previews
-    drawToCanvas(after2d, convertedCanvas, 160);
-
-    // provide download link
-    downloadBtn.style.display = 'inline-block';
-    downloadBtn.href = convertedCanvas.toDataURL('image/png');
-    downloadBtn.download = 'modern_skin.png';
-
-    // 3D viewers
-    // skinview3d accepts a URL (dataURL) or Image. We'll pass dataURL for converted
-    viewerBefore.loadSkin( loadedImage.src ); // show original (legacy) as skin - skinview3d handles legacy fine
-    viewerAfter.loadSkin( convertedCanvas.toDataURL('image/png'), { slim: detectedSlim } );
-
-    // update part toggles to match viewerAfter parts
-    syncPartToggleStates();
-  }
-
-  convertBtn.addEventListener('click', applyConversionAndPreview);
-
-  // allow convert after load automatically if user uploaded and we want convenience
-  fileInput.addEventListener('change', () => { /* user triggers convert button explicitly or press convert */ });
-
-  // Download button click: it's an <a> anchor set above
-  downloadBtn.addEventListener('click', (e) => {
-    if (!convertedCanvas) { e.preventDefault(); alert('Nothing to download yet.'); }
-  });
-
-  // —————————————————————————————————————————————
-  // Part toggles hooking into skinview3d's playerObject skin structure
-  // Note: skinview3d exposes playerObject.skin.<part> meshes
-  // We'll toggle visibility when user clicks checkboxes
-  // —————————————————————————————————————————————
-  function syncPartToggleStates(){
-    const toggles = partTogglesContainer.querySelectorAll('input[type="checkbox"]');
-    toggles.forEach(cb => cb.checked = true);
-    // show all in viewerAfter
-    setTimeout(()=>{ // delay to ensure playerObject is ready
-      toggles.forEach(cb=>{ const p = cb.dataset.part; safeSetPartVisible(p, true); });
-    }, 80);
-  }
-
-  function safeSetPartVisible(partName, visible){
-    try {
-      const po = viewerAfter.playerObject;
-      if (!po || !po.skin) return;
-      if (po.skin[partName] && typeof po.skin[partName].visible !== 'undefined') po.skin[partName].visible = visible;
-    } catch(e){}
-  }
-
-  partTogglesContainer.addEventListener('change', (ev)=>{
-    const target = ev.target;
-    if (!target || target.tagName !== 'INPUT') return;
-    const part = target.dataset.part;
-    safeSetPartVisible(part, target.checked);
-  });
-
-  resetPartsBtn.addEventListener('click', ()=>{
-    partTogglesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
-      cb.checked = true;
-      const p = cb.dataset.part;
-      safeSetPartVisible(p, true);
+      reader.readAsDataURL(file);
     });
-  });
 
-  // —————————————————————————————————————————————
-  // Animation controls
-  // —————————————————————————————————————————————
-  function updateAnimation(){
-    const enabled = animToggle.checked;
-    const mode = animMode.value;
-    if (!viewerAfter) return;
-    if (!enabled) { viewerAfter.animation = null; return; }
-    if (mode === 'idle') viewerAfter.animation = new skinview3d.IdleAnimation();
-    else if (mode === 'walk') viewerAfter.animation = new skinview3d.WalkingAnimation();
-    else if (mode === 'run') viewerAfter.animation = new skinview3d.RunningAnimation ? new skinview3d.RunningAnimation() : new skinview3d.WalkingAnimation();
-    else if (mode === 'spin') {
-      // custom spin: we'll attach a tiny rotation loop
-      viewerAfter.animation = { update: () => viewerAfter.playerObject.rotation.y += 0.01 * (autoRotate.checked ? 1.5 : 1.0) };
-    } else viewerAfter.animation = new skinview3d.IdleAnimation();
-  }
-  animToggle.addEventListener('change', updateAnimation);
-  animMode.addEventListener('change', updateAnimation);
-  autoRotate.addEventListener('change', ()=>{ if (autoRotate.checked) viewerAfter.playerObject.rotation.y += 0.01; });
-
-  // simple auto-rotate implementation (frame-based)
-  let lastAuto = 0;
-  function autoRotateLoop(ts){
-    if (autoRotate.checked && viewerAfter && viewerAfter.playerObject) {
-      // rotate slowly when enabled
-      viewerAfter.playerObject.rotation.y += 0.008;
-    }
-    requestAnimationFrame(autoRotateLoop);
-  }
-  requestAnimationFrame(autoRotateLoop);
-
-  // showGrid: toggle a helper grid in viewer scenes
-  const gridMap = new Map();
-  function setGridVisible(vis){
-    [viewerBefore, viewerAfter].forEach(v=>{
-      if (vis) {
-        if (!gridMap.has(v)) {
-          const grid = new THREE.GridHelper(6, 6, 0x444444, 0x222222);
-          grid.position.y = -0.9;
-          v.scene.add(grid);
-          gridMap.set(v, grid);
-        }
-      } else {
-        const grid = gridMap.get(v);
-        if (grid) { v.scene.remove(grid); gridMap.delete(v); }
-      }
+    downloadBtn.addEventListener("click", () => {
+      if (!convertedSkin) return;
+      const link = document.createElement("a");
+      link.download = "modern_skin.png";
+      link.href = convertedSkin.toDataURL("image/png");
+      link.click();
     });
-  }
-  showGrid.addEventListener('change', ()=> setGridVisible(showGrid.checked) );
-
-  // "Center Cameras" and "Fit Both" convenience
-  document.getElementById('centerCameras').addEventListener('click', ()=>{
-    [viewerBefore, viewerAfter].forEach(v=>{
-      v.controls.reset();
-      v.camera.position.set(0,1.6,3);
-    });
-  });
-  document.getElementById('fitBoth').addEventListener('click', ()=>{
-    // ensure both viewers focus on the player's center
-    [viewerBefore, viewerAfter].forEach(v=>{
-      v.controls.reset();
-      v.controls.update();
-    });
-  });
-
-  // Attempt a small convenience: when a skin is loaded, auto-apply conversion so user can inspect quickly
-  // We'll watch for loadedImage changes (converted when upload occurs).
-  const originalReadObserver = new MutationObserver(()=>{});
-  // Not necessary — we call convert explicitly.
-
-  // Accessibility & keyboard: convert with Enter when file selected
-  fileInput.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') applyConversionAndPreview(); });
-
-  // initial UI state
-  detectedLabel.textContent = '—';
-  dimsLabel.textContent = '—';
-
-  // End of script
   </script>
 </body>
 </html>
