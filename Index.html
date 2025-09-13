@@ -1,174 +1,251 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Legacy to Modern Skin Converter</title>
-  <style>
-    body {
-      margin: 0;
-      background: #202020;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      height: 100vh;
-      overflow-y: auto;
-    }
-    h1 {
-      margin: 10px;
-      font-size: 20px;
-    }
-    canvas { background: #111; margin: 10px; touch-action: none; }
-    #controls { margin: 10px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
-    input[type="file"], button {
-      background: #333; color: #fff; border: none; padding: 8px 12px; cursor: pointer;
-    }
-    button:disabled { background: #555; cursor: not-allowed; }
-    button:hover:enabled { background: #666; }
-    #log {
-      width: 90%;
-      max-width: 600px;
-      background: #111;
-      border: 1px solid #444;
-      padding: 5px;
-      margin: 10px;
-      font-family: monospace;
-      font-size: 12px;
-      height: 100px;
-      overflow-y: auto;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minecraft Legacy → Modern Skin Converter — Full</title>
+<style>
+:root{
+  --bg:#0f1720;--card:#0b1220;--muted:#9fb7c9;--accent:#06b6d4;--panel:#142336;
+  --light-bg:#f6f9fb;--light-text:#081221;
+}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+body.light{background:var(--light-bg);color:var(--light-text);}
+body{background:var(--bg);color:#e6eef8;display:flex;flex-direction:column;align-items:center;padding:12px;box-sizing:border-box;}
+.app{width:100%;max-width:1100px;}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;}
+header h1{margin:0;font-size:18px;letter-spacing:0.2px;}
+.controls-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.card{background:linear-gradient(180deg, #07101a, #07101a);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 6px 24px rgba(1,6,12,0.6);}
+.u-btn{background:var(--panel);color:inherit;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;cursor:pointer;}
+.u-btn.primary{background:linear-gradient(90deg,var(--accent),#7dd3fc);color:#002;font-weight:700;}
+.u-input{display:inline-block;}
+input[type=file]{display:none;}
+.row{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-top:12px;}
+.col{display:flex;flex-direction:column;gap:8px;}
+.preview-2d{width:160px;height:160px;image-rendering:pixelated;border:1px solid rgba(255,255,255,0.06);background:#020408;}
+.label{font-size:13px;color:var(--muted);}
+.subtitle{font-size:13px;color:var(--muted);margin:0;}
+.toggles{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.toggles label{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:8px;cursor:pointer;font-size:13px;display:inline-flex;gap:8px;align-items:center;}
+.viewer3d{width:420px;height:420px;border-radius:8px;overflow:hidden;background:linear-gradient(180deg,#07101a,#041018);border:1px solid rgba(255,255,255,0.04);}
+.meta{font-size:13px;color:var(--muted);}
+footer{margin-top:14px;font-size:13px;color:var(--muted);text-align:center;}
+.chip{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;font-weight:600;}
+@media (max-width:980px){.viewer3d{width:320px;height:320px;}.preview-2d{width:128px;height:128px}}
+@media (max-width:640px){header{flex-direction:column;align-items:flex-start;gap:8px}.row{flex-direction:column}.viewer3d{width:100%;height:360px}}
+</style>
 </head>
 <body>
-  <h1>Legacy → Modern Minecraft Skin Converter</h1>
-  <div id="controls">
-    <input type="file" id="fileInput" accept="image/png">
-    <button id="downloadBtn" disabled>Download Modern Skin</button>
-  </div>
+<div class="app">
+<header>
   <div>
-    <h3>Before</h3>
-    <canvas id="beforeCanvas" width="300" height="400"></canvas>
+    <h1>Minecraft Legacy → Modern Skin Converter</h1>
+    <div class="subtitle">Auto-detects slim/wide, converts 64×32 → 64×64, 2D + 3D previews, toggles & animations.</div>
   </div>
-  <div>
-    <h3>After</h3>
-    <canvas id="afterCanvas" width="300" height="400"></canvas>
+  <div class="controls-row">
+    <label class="u-btn">
+      <input id="fileInput" type="file" accept="image/png">
+      Upload PNG
+    </label>
+    <button id="convertBtn" class="u-btn primary">Convert Now</button>
+    <a id="downloadBtn" class="u-btn" style="display:none">Download Modern Skin</a>
+    <button id="toggleThemeBtn" class="u-btn">Toggle Light</button>
   </div>
-  <div id="log"></div>
+</header>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.3/bundle/skinview3d.bundle.js"></script>
-  <script>
-    const fileInput = document.getElementById("fileInput");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const logBox = document.getElementById("log");
+<div class="card">
+  <div class="row">
+    <div class="col" style="min-width:200px;">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div>
+          <div class="label">Original (Before)</div>
+          <canvas id="before2d" class="preview-2d" width="160" height="160"></canvas>
+        </div>
+        <div>
+          <div class="label">Converted (After)</div>
+          <canvas id="after2d" class="preview-2d" width="160" height="160"></canvas>
+        </div>
+      </div>
+      <div style="margin-top:8px;">
+        <div class="meta">Detected: <span id="detectedLabel" class="chip">—</span></div>
+        <div class="meta">Dimensions: <span id="dimsLabel" class="chip">—</span></div>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="showHat" checked> Show Hat</label>
+        <label><input type="checkbox" id="autoRotate" checked> Auto-Rotate</label>
+      </div>
+    </div>
+    <div class="col" style="flex:1;min-width:320px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="flex:1">
+          <div class="label">3D Preview — Original</div>
+          <div id="viewerBefore" class="viewer3d"></div>
+        </div>
+        <div style="flex:1">
+          <div class="label">3D Preview — Converted</div>
+          <div id="viewerAfter" class="viewer3d"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    const beforeViewer = new skinview3d.SkinViewer({
-      canvas: document.getElementById("beforeCanvas"),
-      width: 300,
-      height: 400,
-      skin: null
-    });
-    beforeViewer.controls.enableZoom = true;
-    beforeViewer.controls.enableRotate = true;
+<footer class="card">
+  <strong>Notes:</strong> This tool inspects and converts legacy skins to modern format with proper arm width. Works on desktop & mobile.
+</footer>
+</div>
 
-    const afterViewer = new skinview3d.SkinViewer({
-      canvas: document.getElementById("afterCanvas"),
-      width: 300,
-      height: 400,
-      skin: null
-    });
-    afterViewer.controls.enableZoom = true;
-    afterViewer.controls.enableRotate = true;
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.4/bundle/skinview3d.min.js"></script>
+<script>
+const fileInput = document.getElementById('fileInput');
+const convertBtn = document.getElementById('convertBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const before2d = document.getElementById('before2d');
+const after2d = document.getElementById('after2d');
+const detectedLabel = document.getElementById('detectedLabel');
+const dimsLabel = document.getElementById('dimsLabel');
+const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+const showHatCheckbox = document.getElementById('showHat');
+const autoRotateCheckbox = document.getElementById('autoRotate');
 
-    let convertedSkin = null;
+let loadedImage = null;
+let convertedCanvas = null;
+let detectedSlim = false;
+let viewerBefore, viewerAfter;
 
-    function log(msg) {
-      logBox.innerText += msg + "\\n";
-      logBox.scrollTop = logBox.scrollHeight;
-    }
+// -----------------------------
+// Create SkinView3D viewers
+// -----------------------------
+function createViewer(containerId){
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  const canvas = document.createElement('canvas');
+  canvas.width = container.clientWidth || 420;
+  canvas.height = container.clientHeight || 420;
+  container.appendChild(canvas);
+  const viewer = new skinview3d.SkinViewer({canvas:canvas,width:canvas.width,height:canvas.height});
+  viewer.controls.enableZoom=true;
+  viewer.controls.enableRotate=true;
+  viewer.controls.enablePan=false;
+  viewer.camera.position.set(0,1.6,3);
+  viewer.scene.add(new THREE.AmbientLight(0xffffff,0.6));
+  const dl=new THREE.DirectionalLight(0xffffff,0.7);
+  dl.position.set(5,10,7);
+  viewer.scene.add(dl);
+  return viewer;
+}
 
-    function detectSlim(ctx) {
-      // Check right arm width from legacy skin (x=54, y=20 → transparent if slim)
-      let imgData = ctx.getImageData(54, 20, 1, 12).data;
-      let opaqueCount = 0;
-      for (let i = 0; i < imgData.length; i += 4) {
-        if (imgData[i + 3] > 0) opaqueCount++;
-      }
-      return opaqueCount === 0; // if empty → slim arms
-    }
+viewerBefore=createViewer('viewerBefore');
+viewerAfter=createViewer('viewerAfter');
 
-    function convertLegacyToModern(img) {
-      const out = document.createElement("canvas");
-      out.width = 64; out.height = 64;
-      const ctx = out.getContext("2d");
+// -----------------------------
+// File input handling
+// -----------------------------
+fileInput.addEventListener('change', e=>{
+  const f=e.target.files && e.target.files[0];
+  if(!f) return;
+  if(!f.type.includes('png')) { alert('Please upload a PNG skin.'); return; }
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      loadedImage=img;
+      dimsLabel.textContent=img.width+'×'+img.height;
+      drawToCanvas(before2d,img);
+      detectedSlim=detectSlimModel(img);
+      detectedLabel.textContent=detectedSlim?'Slim (Alex)':'Wide (Steve)';
+    };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(f);
+});
 
-      if (img.height === 64) {
-        // Already modern → just draw
-        ctx.drawImage(img, 0, 0);
-        return out;
-      }
+function drawToCanvas(canvas,img,displaySize=160){
+  const ctx=canvas.getContext('2d');
+  const scale=Math.min(displaySize/img.width,displaySize/img.height);
+  const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+  canvas.width=w; canvas.height=h;
+  ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,w,h);
+  ctx.drawImage(img,0,0,img.width,img.height,0,0,w,h);
+}
 
-      // Draw legacy 64x32 in top half
-      ctx.drawImage(img, 0, 0);
+function detectSlimModel(img){
+  const w=img.width, h=img.height;
+  const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
+  const ctx=tmp.getContext('2d'); ctx.drawImage(img,0,0);
+  const scaleX=w/64, scaleY=h/32;
+  const sampleX=Math.round(47*scaleX), sy=Math.round(16*scaleY), sh=Math.max(4,Math.round(12*scaleY));
+  try{
+    const data=ctx.getImageData(sampleX,sy,1,sh).data;
+    let opaque=0;
+    for(let i=0;i<data.length;i+=4) if(data[i+3]>12) opaque++;
+    return opaque<(sh*0.45);
+  } catch(e){ return false; }
+}
 
-      // Copy arms/legs to bottom half (new layers)
-      ctx.drawImage(img, 0, 16, 16, 16, 16, 48, 16, 16);   // Left leg
-      ctx.drawImage(img, 40, 16, 16, 16, 32, 48, 16, 16);  // Right leg
-      ctx.drawImage(img, 0, 16, 16, 16, 0, 48, 16, 16);    // Left leg second layer
-      ctx.drawImage(img, 40, 16, 16, 16, 48, 48, 16, 16);  // Right leg second layer
+// -----------------------------
+// Legacy → Modern conversion
+// -----------------------------
+function convertLegacyToModern(img,slim){
+  const srcCanvas=document.createElement('canvas');
+  let sw=img.width, sh=img.height, scale=1;
+  if(sw===128){ scale=0.5; sw=64; sh=Math.round(sh*scale); }
+  srcCanvas.width=sw; srcCanvas.height=sh;
+  const sctx=srcCanvas.getContext('2d'); sctx.imageSmoothingEnabled=false;
+  if(scale!==1) sctx.drawImage(img,0,0,sw,sh); else sctx.drawImage(img,0,0);
 
-      ctx.drawImage(img, 32, 16, 16, 16, 48, 48, 16, 16);  // Right arm copy
-      ctx.drawImage(img, 32, 16, 16, 16, 32, 48, 16, 16);  // Left arm copy
+  if(!(sw===64&&(sh===32||sh===64))) throw new Error('Unsupported dimensions. Expected legacy 64×32 (or 128 scaled).');
 
-      return out;
-    }
+  const dst=document.createElement('canvas');
+  dst.width=64; dst.height=64;
+  const dctx=dst.getContext('2d');
+  dctx.imageSmoothingEnabled=false; dctx.clearRect(0,0,64,64);
+  dctx.drawImage(srcCanvas,0,0);
 
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-          const tmp = document.createElement("canvas");
-          tmp.width = img.width; tmp.height = img.height;
-          const ctx = tmp.getContext("2d");
-          ctx.drawImage(img, 0, 0);
+  try{
+    // duplicate arms/legs
+    dctx.drawImage(srcCanvas,4,16,4,16,20,48,4,16);
+    dctx.drawImage(srcCanvas,4,16,4,16,16,48,4,16);
+    const armWidth=slim?3:4;
+    dctx.drawImage(srcCanvas,40,16,armWidth,16,32,48,armWidth,16);
+    if(!slim) dctx.drawImage(srcCanvas,40,16,4,16,36,48,4,16);
+  } catch(e){ console.warn('copy failed',e); }
 
-          let slim = false;
-          if (img.height === 32) {
-            slim = detectSlim(ctx);
-            log("Detected legacy skin: " + (slim ? "Slim (Alex)" : "Wide (Steve)"));
-          } else if (img.height === 64) {
-            log("Detected modern skin");
-          } else {
-            log("Invalid skin size: " + img.width + "x" + img.height);
-            return;
-          }
+  return dst;
+}
 
-          const modernCanvas = convertLegacyToModern(img);
-          convertedSkin = modernCanvas;
+// -----------------------------
+// Apply conversion and preview
+// -----------------------------
+function applyConversionAndPreview(){
+  if(!loadedImage){ alert('No image loaded.'); return; }
+  try{ convertedCanvas=convertLegacyToModern(loadedImage,detectedSlim); }
+  catch(err){ alert('Conversion error: '+err.message); return; }
 
-          beforeViewer.loadSkin(img);
-          afterViewer.loadSkin(modernCanvas.toDataURL());
+  drawToCanvas(after2d,convertedCanvas);
+  downloadBtn.style.display='inline-block';
+  downloadBtn.href=convertedCanvas.toDataURL('image/png');
+  downloadBtn.download='modern_skin.png';
 
-          downloadBtn.disabled = false;
-          log("Conversion complete!");
-        };
-        img.src = ev.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
+  viewerBefore.loadSkin(loadedImage.src,{slim:detectedSlim, hat: showHatCheckbox.checked});
+  viewerAfter.loadSkin(convertedCanvas.toDataURL('image/png'),{slim:detectedSlim, hat: showHatCheckbox.checked});
+  viewerBefore.autoRotate=autoRotateCheckbox.checked;
+  viewerAfter.autoRotate=autoRotateCheckbox.checked;
+}
 
-    downloadBtn.addEventListener("click", () => {
-      if (!convertedSkin) return;
-      const link = document.createElement("a");
-      link.download = "modern_skin.png";
-      link.href = convertedSkin.toDataURL("image/png");
-      link.click();
-    });
-  </script>
+// -----------------------------
+// Event listeners
+// -----------------------------
+convertBtn.addEventListener('click',applyConversionAndPreview);
+toggleThemeBtn.addEventListener('click',()=>{
+  document.body.classList.toggle('light');
+  toggleThemeBtn.textContent=document.body.classList.contains('light')?'Toggle Dark':'Toggle Light';
+});
+showHatCheckbox.addEventListener('change',applyConversionAndPreview);
+autoRotateCheckbox.addEventListener('change',applyConversionAndPreview);
+</script>
 </body>
 </html>
