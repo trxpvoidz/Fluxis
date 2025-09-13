@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fluxis - Legacy Skin to modern skin converter!</title>
+<style>
+/* General styling */
+body { font-family: Arial, sans-serif; background: #0f1720; color: #fff; text-align: center; margin:0; padding:0; }
+img, div { image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: -o-crisp-edges; image-rendering: -webkit-optimize-contrast; -ms-interpolation-mode: nearest-neighbor; }
+table, td, tr { margin:0; padding:0; border:0; font:inherit; text-align:left; width:100%; }
+td { width:50%; }
+button { margin:2px; padding:0.4em 0.8em; cursor:pointer; background: #06b6d4; border:none; border-radius: 4px; color:#fff; transition: transform 0.2s, background 0.2s; }
+button:hover { transform: scale(1.05); background: #0dcaf0; }
+.preview-container { display:flex; gap:1em; flex-wrap:wrap; justify-content:center; margin-top:1em; }
+.preview-box { border:1px solid #888; padding:0.5em; display:flex; flex-direction:column; align-items:center; background: #0b1220; border-radius: 8px; transition: transform 0.2s; }
+.preview-box:hover { transform: scale(1.03); }
+.preview-box img { display:block; margin-bottom:0.5em; max-width:128px; }
+.controls { margin-top:1em; display:flex; flex-wrap:wrap; gap:0.5em; justify-content:center; }
+input[type=text]{ width:40px; padding:2px; border-radius:3px; border:none; text-align:center; }
+h2 { margin-top:1em; color:#06b6d4; text-shadow: 1px 1px 3px #000; }
+
+/* Footer styling and animation */
+footer { margin-top: 2em; padding: 1em; font-size: 0.9em; color:#fff; }
+footer a { color:#06b6d4; text-decoration:none; position: relative; transition: color 0.3s; }
+footer a::after { content:""; position:absolute; left:0; bottom:0; width:100%; height:2px; background:#06b6d4; transform: scaleX(0); transform-origin: right; transition: transform 0.3s ease; }
+footer a:hover::after { transform: scaleX(1); transform-origin: left; }
+footer a:hover { color:#0dcaf0; }
+</style>
+</head>
+<body>
+
+<h2>Fluxis - Legacy Skin to modern skin converter</h2>
+<input type="file" id="imgLoader" accept="image/png" multiple>
+
+<div class="controls">
+	<button id="prevBtn">Previous Skin</button>
+	<button id="nextBtn">Next Skin</button>
+	<button id="downloadAllBtn">Download All as ZIP</button>
+</div>
+
+<div id="imgTools" class="controls">
+	Zoom: 
+	<button onclick="zoomCurrent('0.25')">1:4</button>
+	<button onclick="zoomCurrent('0.5')">1:2</button>
+	<button onclick="zoomCurrent('1')">1:1</button>
+	<button onclick="zoomCurrent('2')">2:1</button>
+</div>
+
+<div id="imgControl" class="controls"></div>
+<div id="previews" class="preview-container"></div>
+
+<script src="three.min.js"></script>
+<script src="uvareas.js"></script>
+<script src="uvcharacter.js"></script>
+<script src="zoom.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<script>
+const constSkinMinecraft = "minecraft";
+const constSkinMinetest = "minetest";
+
+let skins = [];
+let currentIndex = 0;
+
+document.getElementById("imgLoader").addEventListener("change", loadImages);
+document.getElementById("prevBtn").addEventListener("click", ()=>switchSkin(-1));
+document.getElementById("nextBtn").addEventListener("click", ()=>switchSkin(1));
+document.getElementById("downloadAllBtn").addEventListener("click", downloadAll);
+
+function loadImages() {
+	const files = document.getElementById("imgLoader").files;
+	const container = document.getElementById("previews");
+	const imgControlDiv = document.getElementById("imgControl");
+	container.innerHTML = "";
+	imgControlDiv.innerHTML = "";
+	skins = [];
+
+	Array.from(files).forEach((file, index) => {
+		const dstImg = document.createElement("img");
+		const characterDiv = document.createElement("div");
+		characterDiv.id = "character" + index;
+
+		const box = document.createElement("div");
+		box.className = "preview-box";
+		box.appendChild(dstImg);
+		box.appendChild(characterDiv);
+		container.appendChild(box);
+
+		const srcImg = new Image();
+		srcImg.onload = () => {
+			const skinObj = {srcImg, dstImg, characterDiv};
+			skins.push(skinObj);
+			processSkin(skinObj);
+			addControls(skinObj, index);
+			if(index===0) showSkin(0);
+		};
+		srcImg.src = URL.createObjectURL(file);
+	});
+}
+
+function addControls(skin, index){
+	const controlDiv = document.getElementById("imgControl");
+	const wrapper = document.createElement("div");
+	wrapper.id = "controls"+index;
+
+	function createButton(label, callback){
+		const btn = document.createElement("button");
+		btn.innerText = label;
+		btn.onclick = callback;
+		return btn;
+	}
+
+	function createAlphaInput(id){ 
+		const inp = document.createElement("input");
+		inp.type="text"; inp.size="1"; inp.value="0.5"; inp.id=id; return inp;
+	}
+
+	// Cape
+	wrapper.appendChild(createButton("Copy Cape", ()=>copy('areaJacket.back','areaCapeMinetest',0,null,skin)));
+	wrapper.appendChild(createButton("Erase Cape", ()=>copy('areaCapeMinetest','areaNull',0,null,skin)));
+
+	// Jacket
+	const alphaJacket = createAlphaInput("alphaJacket"+index);
+	wrapper.appendChild(document.createTextNode(" Jacket Alpha: "));
+	wrapper.appendChild(alphaJacket);
+	wrapper.appendChild(createButton("Copy Jacket", ()=>copy('areaJacket.all','areaBody.all',0,"alphaJacket"+index,skin)));
+
+	// Body restore
+	wrapper.appendChild(createButton("Body.Back", ()=>copy('areaBody.back','areaBody.back',0,null,skin)));
+	wrapper.appendChild(createButton("Body", ()=>copy('areaBody.all','areaBody.all',0,null,skin)));
+
+	// Left Trouser
+	const alphaTrouserL = createAlphaInput("alphaTrouserLeft"+index);
+	wrapper.appendChild(document.createTextNode(" Left Trouser Alpha: "));
+	wrapper.appendChild(alphaTrouserL);
+	wrapper.appendChild(createButton("Copy Left Trouser", ()=>copy('areaTrouserLeft.all','areaLegRight.all',1,"alphaTrouserLeft"+index,skin)));
+	wrapper.appendChild(createButton("Leg", ()=>copy('areaLegLeft.all','areaLegRight.all',1,null,skin)));
+
+	// Right Trouser
+	const alphaTrouserR = createAlphaInput("alphaTrouserRight"+index);
+	wrapper.appendChild(document.createTextNode(" Right Trouser Alpha: "));
+	wrapper.appendChild(alphaTrouserR);
+	wrapper.appendChild(createButton("Copy Right Trouser", ()=>copy('areaTrouserRight.all','areaLegRight.all',0,"alphaTrouserRight"+index,skin)));
+	wrapper.appendChild(createButton("Leg", ()=>copy('areaLegRight.all','areaLegRight.all',0,null,skin)));
+
+	// Left Sleeve
+	const alphaSleeveL = createAlphaInput("alphaSleeveLeft"+index);
+	wrapper.appendChild(document.createTextNode(" Left Sleeve Alpha: "));
+	wrapper.appendChild(alphaSleeveL);
+	wrapper.appendChild(createButton("Copy Left Sleeve", ()=>copy('areaSleeveLeft.all','areaArmRight.all',1,"alphaSleeveLeft"+index,skin)));
+	wrapper.appendChild(createButton("Arm", ()=>copy('areaArmLeft.all','areaArmRight.all',1,null,skin)));
+
+	// Right Sleeve
+	const alphaSleeveR = createAlphaInput("alphaSleeveRight"+index);
+	wrapper.appendChild(document.createTextNode(" Right Sleeve Alpha: "));
+	wrapper.appendChild(alphaSleeveR);
+	wrapper.appendChild(createButton("Copy Right Sleeve", ()=>copy('areaSleeveRight.all','areaArmRight.all',0,"alphaSleeveRight"+index,skin)));
+	wrapper.appendChild(createButton("Arm", ()=>copy('areaArmRight.all','areaArmRight.all',0,null,skin)));
+
+	controlDiv.appendChild(wrapper);
+}
+
+function processSkin(skin) {
+	const {srcImg,dstImg,characterDiv} = skin;
+	const dstCanvas = document.createElement("canvas");
+	const context = dstCanvas.getContext("2d");
+
+	let srcWidth = srcImg.width;
+	let srcHeight = srcImg.height;
+	let uvFaceWidth = srcWidth / 16;
+	let dstHeight = srcWidth;
+	let srcSkinType = constSkinMinecraft;
+	if(srcWidth === srcHeight*2){ srcSkinType=constSkinMinetest; dstHeight=srcWidth; }
+
+	dstCanvas.width = srcWidth;
+	dstCanvas.height = dstHeight;
+
+	// Copy upper part
+	draw(srcImg, areaMinetest, context, areaMinetest, uvFaceWidth, 0);
+
+	// Cleanup and copy jacket/cape
+	if(srcSkinType === constSkinMinecraft){
+		[areaHead.unusedL, areaHead.unusedR, areaHat.unusedL, areaHat.unusedR,
+		areaLegRight.unusedL, areaLegRight.unusedR, areaBody.unusedL, areaBody.unusedR,
+		areaArmRight.unusedL, areaArmRight.unusedR, areaUnusedMinetest].forEach(a=>draw(srcImg,a,context,areaNull,uvFaceWidth,0));
+		draw(srcImg, areaJacket.back, context, areaCapeMinetest, uvFaceWidth,0);
+	}else{
+		[areaHead.unusedL, areaHead.unusedR, areaHat.unusedL, areaHat.unusedR,
+		areaLegRight.unusedL, areaLegRight.unusedR, areaBody.unusedL, areaBody.unusedR,
+		areaArmRight.unusedL, areaArmRight.unusedR, areaUnusedMinecraft].forEach(a=>draw(srcImg,a,context,areaNull,uvFaceWidth,0));
+		draw(srcImg, areaCapeMinetest, context, areaJacket.back, uvFaceWidth,0);
+		[["LegRight.top","LegLeft.top"],["LegRight.bottom","LegLeft.bottom"],
+		["LegRight.lfr","LegLeft.lfr"],["LegRight.back","LegLeft.back"],
+		["ArmRight.top","ArmLeft.top"],["ArmRight.bottom","ArmLeft.bottom"],
+		["ArmRight.lfr","ArmLeft.lfr"],["ArmRight.back","ArmLeft.back"]].forEach(pair=>{
+			draw(dstCanvas, eval("area"+pair[0]), context, eval("area"+pair[1]), uvFaceWidth,1);
+		});
+	}
+
+	skin.dstCanvas = dstCanvas;
+	dstImg.src = dstCanvas.toDataURL();
+
+	skin.character3D = new MinecraftCharacter(characterDiv.id);
+	const ctx = skin.character3D.canvas.getContext("2d");
+	ctx.clearRect(0,0,dstCanvas.width,dstCanvas.height);
+	ctx.drawImage(dstCanvas,0,0);
+	skin.character3D.render();
+}
+
+function draw(srcImg, srcArea, dstCtx, dstArea, uvFaceWidth, flip){
+	if(!srcArea || !dstArea) return;
+	let bx = srcArea.x*uvFaceWidth;
+	let by = srcArea.y*uvFaceWidth;
+	let bw = srcArea.w*uvFaceWidth;
+	let bh = srcArea.h*uvFaceWidth;
+	let dx = dstArea.x*uvFaceWidth;
+	let dy = dstArea.y*uvFaceWidth;
+	if(flip){
+		const tmp = document.createElement("canvas");
+		tmp.width = bw; tmp.height = bh;
+		const ctx = tmp.getContext("2d");
+		ctx.translate(bw,0); ctx.scale(-1,1);
+		ctx.drawImage(srcImg,bx,by,bw,bh,0,0,bw,bh);
+		dstCtx.drawImage(tmp,dx,dy,bw,bh);
+	}else dstCtx.drawImage(srcImg,bx,by,bw,bh,dx,dy,bw,bh);
+}
+
+function copy(from,to,flip,alphaId,skin){
+	const context = skin.dstCanvas.getContext("2d");
+	let areaFrom = eval(from);
+	let areaTo = eval(to);
+	let alpha = 1;
+	if(alphaId) alpha = parseFloat(document.getElementById(alphaId).value)||1;
+	context.globalAlpha = alpha;
+	if(areaTo === areaNull) draw(skin.srcImg,areaFrom,context,areaNull,skin.dstCanvas.width/16,flip||0);
+	else draw(skin.srcImg,areaFrom,context,areaTo,skin.dstCanvas.width/16,flip||0);
+	context.globalAlpha = 1;
+	skin.dstImg.src = skin.dstCanvas.toDataURL();
+}
+
+function showSkin(index){ skins.forEach((s,i)=>{s.dstImg.parentElement.style.display=(i===index)?"flex":"none"; }); currentIndex=index;}
+function switchSkin(dir){ let next=(currentIndex+dir+skins.length)%skins.length; showSkin(next);}
+function zoomCurrent(scale){ if(skins[currentIndex]) zoom.to(scale,skins[currentIndex].dstImg.parentElement);}
+
+function downloadAll(){
+	if(skins.length===0) return alert("No skins loaded!");
+	const zip = new JSZip();
+	skins.forEach((skin,i)=>{
+		const dataURL = skin.dstCanvas.toDataURL("image/png");
+		const base64 = dataURL.split(',')[1];
+		zip.file("skin"+(i+1)+".png", base64, {base64:true});
+	});
+	zip.generateAsync({type:"blob"}).then(blob=>saveAs(blob,"converted_skins.zip"));
+}
+</script>
+
+<footer>Inspired by <a href="https://godly.github.io/minetest-skin-converter" target="_blank">Minetest Skin Converter</a></footer>
+
+</body>
+</html>
