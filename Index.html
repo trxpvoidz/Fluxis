@@ -1,310 +1,262 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Minecraft Legacy → Modern Skin Converter — Full</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Minecraft Legacy → Modern Skin Converter — Full Mobile</title>
 <style>
-  :root {
-    --bg:#0f1720; --card:#0b1220; --muted:#9fb7c9; --accent:#06b6d4; --panel:#142336;
-    --light-bg:#f6f9fb; --light-text:#081221;
-  }
-  html,body {height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-  body.light { background: var(--light-bg); color: var(--light-text); }
-  body { background: var(--bg); color: #e6eef8; display:flex; flex-direction:column; align-items:center; padding:12px; box-sizing:border-box; }
-  .app { width:100%; max-width:1100px; }
-  header{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:12px;}
-  header h1{ margin:0; font-size:18px; letter-spacing:0.2px }
-  .controls-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .card{ background:linear-gradient(180deg, #07101a, #07101a); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.04); box-shadow:0 6px 24px rgba(1,6,12,0.6); }
-  .u-btn{ background:var(--panel); color:inherit; border:1px solid rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; cursor:pointer; }
-  .u-btn.primary{ background:linear-gradient(90deg,var(--accent),#7dd3fc); color:#002; font-weight:700; }
-  .u-input{ display:inline-block; }
-  input[type=file]{ display:none; }
-  .row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-top:12px; }
-  .col { display:flex; flex-direction:column; gap:8px; }
-  .preview-2d { width:160px; height:160px; image-rendering:pixelated; border:1px solid rgba(255,255,255,0.06); background:#020408; }
-  .label { font-size:13px; color:var(--muted); }
-  .subtitle { font-size:13px; color:var(--muted); margin:0; }
-  .toggles { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .toggles label { background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-flex; gap:8px; align-items:center; }
-  .viewer3d { width:420px; height:420px; border-radius:8px; overflow:hidden; background:linear-gradient(180deg,#07101a,#041018); border:1px solid rgba(255,255,255,0.04); }
-  .meta { font-size:13px; color:var(--muted); }
-  footer { margin-top:14px; font-size:13px; color:var(--muted); text-align:center; }
-  .chip { background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-weight:600; }
-  @media (max-width:980px){ .viewer3d{ width:320px; height:320px; } .preview-2d{ width:128px; height:128px } }
-  @media (max-width:640px){ header{flex-direction:column;align-items:flex-start;gap:8px} .row{flex-direction:column} .viewer3d{ width:100%; height:360px } }
+:root{--bg:#0f1720;--card:#0b1220;--muted:#9fb7c9;--accent:#06b6d4;--panel:#142336;--light-bg:#f6f9fb;--light-text:#081221}
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+body.light{background:var(--light-bg);color:var(--light-text);}
+body{background:var(--bg);color:#e6eef8;display:flex;flex-direction:column;align-items:center;padding:12px;box-sizing:border-box;}
+.app{width:100%;max-width:1100px;}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;}
+header h1{margin:0;font-size:18px;letter-spacing:0.2px;}
+.controls-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.card{background:linear-gradient(180deg,#07101a,#07101a);border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 6px 24px rgba(1,6,12,0.6);}
+.u-btn{background:var(--panel);color:inherit;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;cursor:pointer;}
+.u-btn.primary{background:linear-gradient(90deg,var(--accent),#7dd3fc);color:#002;font-weight:700;}
+input[type=file]{display:none;}
+.row{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-top:12px;}
+.col{display:flex;flex-direction:column;gap:8px;}
+.preview-2d{width:160px;height:160px;image-rendering:pixelated;border:1px solid rgba(255,255,255,0.06);background:#020408;}
+.label{font-size:13px;color:var(--muted);}
+.subtitle{font-size:13px;color:var(--muted);margin:0;}
+.toggles{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.toggles label{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:8px;cursor:pointer;font-size:13px;display:inline-flex;gap:8px;align-items:center;}
+.viewer3d{width:420px;height:420px;border-radius:8px;overflow:hidden;background:linear-gradient(180deg,#07101a,#041018);border:1px solid rgba(255,255,255,0.04);}
+.meta{font-size:13px;color:var(--muted);}
+footer{margin-top:14px;font-size:13px;color:var(--muted);text-align:center;}
+.chip{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;font-weight:600;}
+.dragover{border:2px dashed #06b6d4;}
+@media (max-width:980px){.viewer3d{width:320px;height:320px;}.preview-2d{width:128px;height:128px;}}
+@media (max-width:640px){header{flex-direction:column;align-items:flex-start;gap:8px}.row{flex-direction:column}.viewer3d{width:100%;height:360px;}}
 </style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div>
-        <h1>Minecraft Legacy → Modern Skin Converter</h1>
-        <div class="subtitle">Auto-detects slim/wide, converts 64×32 → 64×64, 2D + 3D previews, toggles & animations.</div>
-      </div>
+<div class="app">
+<header>
+<div>
+<h1>Minecraft Legacy → Modern Skin Converter</h1>
+<div class="subtitle">Auto-detects slim/wide, converts 64×32 → 64×64, 2D + 3D previews, toggles & animations.</div>
+</div>
+<div class="controls-row">
+<label class="u-btn" id="fileLabel">Upload PNG<input id="fileInput" type="file" accept="image/png"></label>
+<button id="convertBtn" class="u-btn primary">Convert Now</button>
+<a id="downloadBtn" class="u-btn" style="display:none">Download Modern Skin</a>
+<button id="toggleThemeBtn" class="u-btn">Toggle Light</button>
+</div>
+</header>
 
-      <div class="controls-row">
-        <label class="u-btn">
-          <input id="fileInput" type="file" accept="image/png">
-          Upload PNG
-        </label>
-        <button id="convertBtn" class="u-btn primary">Convert Now</button>
-        <a id="downloadBtn" class="u-btn" style="display:none">Download Modern Skin</a>
-        <button id="toggleThemeBtn" class="u-btn">Toggle Light</button>
-      </div>
-    </header>
+<div class="card" id="dropZone">
+<div class="row">
+<div class="col" style="min-width:200px;">
+<div style="display:flex;gap:12px;align-items:center;">
+<div>
+<div class="label">Original (Before)</div>
+<canvas id="before2d" class="preview-2d" width="160" height="160"></canvas>
+</div>
+<div>
+<div class="label">Converted (After)</div>
+<canvas id="after2d" class="preview-2d" width="160" height="160"></canvas>
+</div>
+</div>
+<div style="margin-top:8px;">
+<div class="meta">Detected: <span id="detectedLabel" class="chip">—</span></div>
+<div class="meta">Dimensions: <span id="dimsLabel" class="chip">—</span></div>
+</div>
+<div style="margin-top:10px" class="toggles">
+<label><input type="checkbox" id="animToggle"> Animation</label>
+<label>Anim mode:
+<select id="animMode" class="u-btn" style="padding:6px 8px;border-radius:6px;">
+<option value="idle">Idle</option>
+<option value="walk">Walk</option>
+<option value="run">Run</option>
+<option value="spin">Spin</option>
+</select>
+</label>
+<label><input type="checkbox" id="showGrid"> Ground Grid</label>
+<label><input type="checkbox" id="autoRotate"> Auto-rotate</label>
+</div>
+<div style="margin-top:10px;">
+<div class="label">Model parts (3D viewer)</div>
+<div class="toggles" id="partToggles">
+<label><input type="checkbox" data-part="head" checked>Head</label>
+<label><input type="checkbox" data-part="body" checked>Body</label>
+<label><input type="checkbox" data-part="leftArm" checked>Left Arm</label>
+<label><input type="checkbox" data-part="rightArm" checked>Right Arm</label>
+<label><input type="checkbox" data-part="leftLeg" checked>Left Leg</label>
+<label><input type="checkbox" data-part="rightLeg" checked>Right Leg</label>
+<label><input type="checkbox" data-part="hat" checked>Hat</label>
+<label><input type="checkbox" data-part="jacket" checked>Jacket</label>
+<label><input type="checkbox" data-part="leftSleeve" checked>Left Sleeve</label>
+<label><input type="checkbox" data-part="rightSleeve" checked>Right Sleeve</label>
+<label><input type="checkbox" data-part="leftPants" checked>Left Pants</label>
+<label><input type="checkbox" data-part="rightPants" checked>Right Pants</label>
+</div>
+<div style="margin-top:8px;">
+<button id="resetParts" class="u-btn">Reset All Parts</button>
+</div>
+</div>
+</div>
 
-    <div class="card">
-      <div class="row">
-        <div class="col" style="min-width:200px;">
-          <div style="display:flex;gap:12px;align-items:center;">
-            <div>
-              <div class="label">Original (Before)</div>
-              <canvas id="before2d" class="preview-2d" width="160" height="160" aria-label="Original skin preview"></canvas>
-            </div>
-            <div>
-              <div class="label">Converted (After)</div>
-              <canvas id="after2d" class="preview-2d" width="160" height="160" aria-label="Converted skin preview"></canvas>
-            </div>
-          </div>
+<div class="col" style="flex:1;min-width:320px;">
+<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+<div style="flex:1">
+<div class="label">3D Preview — Original</div>
+<div id="viewerBefore" class="viewer3d"></div>
+</div>
+<div style="flex:1">
+<div class="label">3D Preview — Converted</div>
+<div id="viewerAfter" class="viewer3d"></div>
+</div>
+</div>
+<div style="margin-top:10px; display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<div class="label">Extras:</div>
+<button id="centerCameras" class="u-btn">Center Cameras</button>
+<button id="fitBoth" class="u-btn">Fit Both</button>
+</div>
+</div>
+</div>
+</div>
 
-          <div style="margin-top:8px;">
-            <div class="meta">Detected: <span id="detectedLabel" class="chip">—</span></div>
-            <div class="meta">Dimensions: <span id="dimsLabel" class="chip">—</span></div>
-          </div>
+<footer class="card" style="margin-top:12px; text-align:left;">
+<strong>Notes:</strong> Drag & drop PNG or click Upload. Auto-detects arm width. Works on desktop & mobile.
+</footer>
+</div>
 
-          <div style="margin-top:10px" class="toggles">
-            <label><input type="checkbox" id="animToggle"> Animation</label>
-            <label>Anim mode:
-              <select id="animMode" class="u-btn" style="padding:6px 8px; border-radius:6px;">
-                <option value="idle">Idle</option>
-                <option value="walk">Walk</option>
-                <option value="run">Run</option>
-                <option value="spin">Spin</option>
-              </select>
-            </label>
-            <label><input type="checkbox" id="showGrid"> Ground Grid</label>
-            <label><input type="checkbox" id="autoRotate"> Auto-rotate</label>
-          </div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.4/bundle/skinview3d.min.js"></script>
+<script>
+const fileInput=document.getElementById('fileInput');
+const convertBtn=document.getElementById('convertBtn');
+const downloadBtn=document.getElementById('downloadBtn');
+const before2d=document.getElementById('before2d');
+const after2d=document.getElementById('after2d');
+const detectedLabel=document.getElementById('detectedLabel');
+const dimsLabel=document.getElementById('dimsLabel');
+const toggleThemeBtn=document.getElementById('toggleThemeBtn');
+const animToggle=document.getElementById('animToggle');
+const animMode=document.getElementById('animMode');
+const showGrid=document.getElementById('showGrid');
+const autoRotate=document.getElementById('autoRotate');
+const resetPartsBtn=document.getElementById('resetParts');
+const partTogglesContainer=document.getElementById('partToggles');
+const dropZone=document.getElementById('dropZone');
 
-          <div style="margin-top:10px;">
-            <div class="label">Model parts (3D viewer)</div>
-            <div class="toggles" id="partToggles">
-              <label><input type="checkbox" data-part="head" checked>Head</label>
-              <label><input type="checkbox" data-part="body" checked>Body</label>
-              <label><input type="checkbox" data-part="leftArm" checked>Left Arm</label>
-              <label><input type="checkbox" data-part="rightArm" checked>Right Arm</label>
-              <label><input type="checkbox" data-part="leftLeg" checked>Left Leg</label>
-              <label><input type="checkbox" data-part="rightLeg" checked>Right Leg</label>
-              <label><input type="checkbox" data-part="hat" checked>Hat</label>
-              <label><input type="checkbox" data-part="jacket" checked>Jacket</label>
-              <label><input type="checkbox" data-part="leftSleeve" checked>Left Sleeve</label>
-              <label><input type="checkbox" data-part="rightSleeve" checked>Right Sleeve</label>
-              <label><input type="checkbox" data-part="leftPants" checked>Left Pants</label>
-              <label><input type="checkbox" data-part="rightPants" checked>Right Pants</label>
-            </div>
+let loadedImage=null;
+let convertedCanvas=null;
+let detectedSlim=false;
 
-            <div style="margin-top:8px;">
-              <button id="resetParts" class="u-btn">Reset All Parts</button>
-            </div>
-          </div>
-        </div>
+function createCanvas(containerId){
+  const container=document.querySelector(containerId);
+  container.innerHTML='';
+  const c=document.createElement('canvas');
+  c.style.width='100%'; c.style.height='100%';
+  container.appendChild(c);
+  return c;
+}
 
-        <div class="col" style="flex:1;min-width:320px;">
-          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
-            <div style="flex:1">
-              <div class="label">3D Preview — Original</div>
-              <div id="viewerBefore" class="viewer3d"></div>
-            </div>
-            <div style="flex:1">
-              <div class="label">3D Preview — Converted</div>
-              <div id="viewerAfter" class="viewer3d"></div>
-            </div>
-          </div>
+const viewerBefore=new skinview3d.SkinViewer({canvas:createCanvas('#viewerBefore')});
+const viewerAfter=new skinview3d.SkinViewer({canvas:createCanvas('#viewerAfter')});
 
-          <div style="margin-top:10px; display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <div class="label">Extras:</div>
-            <button id="centerCameras" class="u-btn">Center Cameras</button>
-            <button id="fitBoth" class="u-btn">Fit Both</button>
-          </div>
-        </div>
-      </div>
-    </div>
+function drawCanvas(canvas,img){
+  canvas.width=160; canvas.height=160;
+  const ctx=canvas.getContext('2d'); ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(img,0,0,img.width,img.height,0,0,160,160);
+}
 
-    <footer class="card" style="margin-top:12px; text-align:left;">
-      <strong>Notes:</strong> This tool <em>inspects</em> and converts legacy skins to modern format. It auto-detects arm width and applies the proper mapping. No drawing or pixel-editing is included. Works on desktop & mobile (touch interactions supported).<br><br>
-      Want the repo packaged (README + demo)? Say "repo" and I'll give you a zip-ready structure.
-    </footer>
-  </div>
+function detectSlim(img){
+  if(img.width!==64 || img.height!==32) return false;
+  const tmp=document.createElement('canvas');
+  tmp.width=img.width; tmp.height=img.height;
+  const ctx=tmp.getContext('2d'); ctx.drawImage(img,0,0);
+  const data=ctx.getImageData(47,16,1,16).data;
+  let opaque=0;
+  for(let i=0;i<data.length;i+=4) if(data[i+3]>12) opaque++;
+  return opaque<8;
+}
 
-  <!-- External libs: three.js + skinview3d -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.4/bundle/skinview3d.min.js"></script>
-
-  <script>
-  // —————————————————————————————————————————————
-  // Utilities & UI wiring
-  // —————————————————————————————————————————————
-  const fileInput = document.getElementById('fileInput');
-  const convertBtn = document.getElementById('convertBtn');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const before2d = document.getElementById('before2d');
-  const after2d = document.getElementById('after2d');
-  const detectedLabel = document.getElementById('detectedLabel');
-  const dimsLabel = document.getElementById('dimsLabel');
-  const toggleThemeBtn = document.getElementById('toggleThemeBtn');
-
-  const animToggle = document.getElementById('animToggle');
-  const animMode = document.getElementById('animMode');
-  const showGrid = document.getElementById('showGrid');
-  const autoRotate = document.getElementById('autoRotate');
-  const resetPartsBtn = document.getElementById('resetParts');
-  const partTogglesContainer = document.getElementById('partToggles');
-
-  let loadedImage = null;
-  let convertedCanvas = null;
-  let detectedSlim = false;
-
-  // skinview3d viewers
-  const viewerBefore = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerBefore'), width: undefined, height: undefined });
-  const viewerAfter  = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerAfter'), width: undefined, height: undefined });
-
-  function createCanvasFor(containerSelectorOrElement){
-    const el = (typeof containerSelectorOrElement === 'string') ? document.querySelector(containerSelectorOrElement) : containerSelectorOrElement;
-    el.innerHTML = '';
-    const c = document.createElement('canvas');
-    c.style.width = '100%';
-    c.style.height = '100%';
-    el.appendChild(c);
-    return c;
+function convertLegacyToModern(img, slim){
+  const src=document.createElement('canvas'); const srcHeight=img.height>32?64:32;
+  src.width=64; src.height=srcHeight;
+  const sctx=src.getContext('2d'); sctx.imageSmoothingEnabled=false; sctx.drawImage(img,0,0,64,srcHeight);
+  const dst=document.createElement('canvas'); dst.width=64; dst.height=64;
+  const dctx=dst.getContext('2d'); dctx.imageSmoothingEnabled=false; dctx.clearRect(0,0,64,64); dctx.drawImage(src,0,0);
+  const armWidth=slim?3:4;
+  dctx.drawImage(src,40,16,armWidth,16,36,48,armWidth,16); 
+  dctx.drawImage(src,40,16,armWidth,16,52,48,armWidth,16); 
+  dctx.drawImage(src,4,16,4,16,20,48,4,16); 
+  dctx.drawImage(src,4,16,4,16,4,48,4,16);  
+  if(srcHeight===64){
+    dctx.drawImage(src,32,0,32,16,32,0,32,16);  
+    dctx.drawImage(src,32,16,32,16,32,16,32,16);
+    dctx.drawImage(src,48,48,armWidth,16,36,48,armWidth,16);
+    dctx.drawImage(src,48,48,armWidth,16,52,48,armWidth,16);
+    dctx.drawImage(src,0,48,4,16,20,48,4,16);
+    dctx.drawImage(src,0,48,4,16,4,48,4,16);
   }
+  return dst;
+}
 
-  [viewerBefore, viewerAfter].forEach(v=>{
-    v.controls.enableZoom = true;
-    v.controls.enableRotate = true;
-    v.controls.enablePan = false;
-    v.camera.position.set(0, 1.6, 3);
-    v.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-    const dl = new THREE.DirectionalLight(0xffffff, 0.7);
-    dl.position.set(5,10,7); v.scene.add(dl);
-    v.setSize( Math.min(420, v.canvas.clientWidth), Math.min(420, v.canvas.clientHeight) );
-  });
+function handleFile(file){
+  if(!file.type.startsWith('image/')) return;
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  img.onload=()=>{
+    loadedImage=img;
+    drawCanvas(before2d,img);
+    detectedSlim=detectSlim(img);
+    detectedLabel.textContent=detectedSlim?'Slim':'Wide';
+    dimsLabel.textContent=`${img.width}×${img.height}`;
+    viewerBefore.loadSkin(img);
+  };
+  img.src=url;
+}
 
-  toggleThemeBtn.addEventListener('click', ()=>{
-    document.body.classList.toggle('light');
-    toggleThemeBtn.textContent = document.body.classList.contains('light') ? 'Toggle Dark' : 'Toggle Light';
-  });
+// File input
+fileInput.addEventListener('change',e=>handleFile(e.target.files[0]));
 
-  // —————————————————————————————————————————————
-  // Fixed File Input Handling
-  // —————————————————————————————————————————————
-  async function loadImageFromFile(file) {
-      if (!file) return null;
-      if (!file.type.includes('png')) { alert('Please upload a PNG.'); return null; }
-      return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = ev => {
-              const img = new Image();
-              img.onload = () => resolve(img);
-              img.onerror = e => reject(e);
-              img.src = ev.target.result;
-          };
-          reader.onerror = e => reject(e);
-          reader.readAsDataURL(file);
-      });
-  }
+// Drag & drop
+dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.classList.add('dragover');});
+dropZone.addEventListener('dragleave',e=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{e.preventDefault(); dropZone.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]);});
 
-  fileInput.addEventListener('change', async e => {
-      const f = e.target.files && e.target.files[0];
-      if (!f) return;
-      try {
-          const img = await loadImageFromFile(f);
-          loadedImage = img;
-          dimsLabel.textContent = img.width + '×' + img.height;
-          drawToCanvas(before2d, img);
-          detectedSlim = detectSlimModel(img);
-          detectedLabel.textContent = detectedSlim ? 'Slim (Alex)' : 'Wide (Steve)';
-          applyConversionAndPreview();
-      } catch (err) {
-          console.error('Failed to load image', err);
-          alert('Failed to load the image.');
-      }
-      e.target.value=''; // allow re-upload
-  });
+convertBtn.addEventListener('click',()=>{
+  if(!loadedImage) return alert('Upload a skin first!');
+  convertedCanvas=convertLegacyToModern(loadedImage,detectedSlim);
+  drawCanvas(after2d,convertedCanvas);
+  viewerAfter.loadSkin(convertedCanvas);
+  downloadBtn.href=convertedCanvas.toDataURL('image/png');
+  downloadBtn.download='converted_skin.png';
+  downloadBtn.style.display='inline-block';
+});
 
-  function drawToCanvas(canvas, img, displaySize=160){
-    const ctx = canvas.getContext('2d');
-    const scale = Math.min(displaySize / img.width, displaySize / img.height);
-    const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-    canvas.width = w; canvas.height = h;
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img, 0,0, img.width, img.height, 0,0, w, h);
-  }
+// Theme toggle
+toggleThemeBtn.addEventListener('click',()=>document.body.classList.toggle('light'));
 
-  function detectSlimModel(img){
-    const w = img.width, h = img.height;
-    const tmp = document.createElement('canvas'); tmp.width=w; tmp.height=h;
-    const ctx = tmp.getContext('2d'); ctx.drawImage(img,0,0);
-    const scaleX = w / 64; const scaleY = h / 32;
-    const sampleX = Math.round(47 * scaleX);
-    const sy = Math.round(16 * scaleY);
-    const sh = Math.max(4, Math.round(12 * scaleY));
-    try {
-      const data = ctx.getImageData(sampleX, sy, 1, sh).data;
-      let opaque = 0;
-      for (let i=0;i<data.length;i+=4) if(data[i+3]>12) opaque++;
-      return opaque < (sh*0.45);
-    } catch(e){ return false; }
-  }
+// Part toggles
+partTogglesContainer.addEventListener('change',e=>{
+  if(e.target.dataset.part) viewerAfter.model[e.target.dataset.part].visible=e.target.checked;
+});
+resetPartsBtn.addEventListener('click',()=>{
+  Object.values(viewerAfter.model).forEach(p=>p.visible=true);
+  partTogglesContainer.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=true);
+});
 
-  function convertLegacyToModern(img, slim){
-    let sourceCanvas = document.createElement('canvas');
-    let sw = img.width, sh = img.height, scale=1;
-    if(sw===128){ scale=0.5; sw=64; sh=Math.round(sh*scale); }
-    sourceCanvas.width=sw; sourceCanvas.height=sh;
-    const sctx = sourceCanvas.getContext('2d'); sctx.imageSmoothingEnabled=false;
-    if(scale!==1) sctx.drawImage(img,0,0,sw,sh); else sctx.drawImage(img,0,0);
-    if(!(sw===64 && (sh===32||sh===64))) throw new Error('Unsupported dimensions. Expected legacy 64×32 (or 128 scaled).');
-    const dst = document.createElement('canvas'); dst.width=64; dst.height=64;
-    const dctx = dst.getContext('2d'); dctx.imageSmoothingEnabled=false; dctx.clearRect(0,0,64,64); dctx.drawImage(sourceCanvas,0,0);
-    try{ dctx.drawImage(sourceCanvas,4,16,4,16,20,48,4,16); dctx.drawImage(sourceCanvas,4,16,4,16,16,48,4,16); }catch(e){console.warn('leg copy failed',e);}
-    const armWidth = slim?3:4;
-    try{ dctx.drawImage(sourceCanvas,40,16,armWidth,16,36,48,armWidth,16); if(!slim) dctx.drawImage(sourceCanvas,40,16,4,16,32,48,4,16); else dctx.drawImage(sourceCanvas,40,16,3,16,32,48,3,16);}catch(e){console.warn('arm copy failed',e);}
-    return dst;
-  }
+// 3D extras
+animToggle.addEventListener('change',()=>viewerAfter.animate(animToggle.checked?animMode.value:'idle'));
+animMode.addEventListener('change',()=>{if(animToggle.checked) viewerAfter.animate(animMode.value);});
+showGrid.addEventListener('change',()=>viewerAfter.grid.show=showGrid.checked);
+autoRotate.addEventListener('change',()=>viewerAfter.controls.autoRotate=autoRotate.checked);
 
-  function applyConversionAndPreview(){
-    if(!loadedImage){ alert('No image loaded.'); return; }
-    try{ convertedCanvas = convertLegacyToModern(loadedImage, detectedSlim); }catch(err){ alert('Conversion error: '+(err.message||err)); return; }
-    drawToCanvas(after2d,convertedCanvas,160);
-    downloadBtn.style.display='inline-block';
-    downloadBtn.href = convertedCanvas.toDataURL('image/png');
-    downloadBtn.download = 'modern_skin.png';
-    viewerBefore.loadSkin(loadedImage.src);
-    viewerAfter.loadSkin(convertedCanvas.toDataURL('image/png'), { slim: detectedSlim });
-    syncPartToggleStates();
-  }
-
-  convertBtn.addEventListener('click', applyConversionAndPreview);
-
-  function syncPartToggleStates(){
-    if(!viewerAfter || !viewerAfter.skin) return;
-    const parts = ['head','body','leftArm','rightArm','leftLeg','rightLeg','hat','jacket','leftSleeve','rightSleeve','leftPants','rightPants'];
-    parts.forEach(p=>{
-      const inp = partTogglesContainer.querySelector(`input[data-part=${p}]`);
-      if(inp) viewerAfter.skin[p].visible = inp.checked;
-    });
-  }
-
-  resetPartsBtn.addEventListener('click', ()=>{
-    partTogglesContainer.querySelectorAll('input').forEach(inp=>inp.checked=true);
-    syncPartToggleStates();
-  });
-
-  partTogglesContainer.addEventListener('change', syncPartToggleStates);
-
-  </script>
+document.getElementById('centerCameras').addEventListener('click',()=>{
+  viewerBefore.camera.position.set(0,1.6,4); viewerAfter.camera.position.set(0,1.6,4);
+});
+document.getElementById('fitBoth').addEventListener('click',()=>{
+  viewerBefore.camera.position.set(0,1.6,4); viewerAfter.camera.position.set(0,1.6,4);
+});
+</script>
 </body>
 </html>
