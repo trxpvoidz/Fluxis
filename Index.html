@@ -32,7 +32,6 @@
   .meta { font-size:13px; color:var(--muted); }
   footer { margin-top:14px; font-size:13px; color:var(--muted); text-align:center; }
   .chip { background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-weight:600; }
-  /* Responsive */
   @media (max-width:980px){ .viewer3d{ width:320px; height:320px; } .preview-2d{ width:128px; height:128px } }
   @media (max-width:640px){ header{flex-direction:column;align-items:flex-start;gap:8px} .row{flex-direction:column} .viewer3d{ width:100%; height:360px } }
 </style>
@@ -139,10 +138,14 @@
     </footer>
   </div>
 
+  <!-- External libs: three.js + skinview3d -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.4/bundle/skinview3d.min.js"></script>
 
   <script>
+  // —————————————————————————————————————————————
+  // Utilities & UI wiring
+  // —————————————————————————————————————————————
   const fileInput = document.getElementById('fileInput');
   const convertBtn = document.getElementById('convertBtn');
   const downloadBtn = document.getElementById('downloadBtn');
@@ -151,6 +154,7 @@
   const detectedLabel = document.getElementById('detectedLabel');
   const dimsLabel = document.getElementById('dimsLabel');
   const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+
   const animToggle = document.getElementById('animToggle');
   const animMode = document.getElementById('animMode');
   const showGrid = document.getElementById('showGrid');
@@ -162,25 +166,29 @@
   let convertedCanvas = null;
   let detectedSlim = false;
 
-  // Skinview3d viewers
-  const viewerBefore = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerBefore') });
-  const viewerAfter  = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerAfter') });
+  // skinview3d viewers
+  const viewerBefore = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerBefore'), width: undefined, height: undefined });
+  const viewerAfter  = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerAfter'), width: undefined, height: undefined });
 
-  function createCanvasFor(container){
-    const el = typeof container === 'string' ? document.querySelector(container) : container;
+  function createCanvasFor(containerSelectorOrElement){
+    const el = (typeof containerSelectorOrElement === 'string') ? document.querySelector(containerSelectorOrElement) : containerSelectorOrElement;
     el.innerHTML = '';
     const c = document.createElement('canvas');
-    c.style.width = '100%'; c.style.height = '100%';
+    c.style.width = '100%';
+    c.style.height = '100%';
     el.appendChild(c);
     return c;
   }
 
   [viewerBefore, viewerAfter].forEach(v=>{
-    v.controls.enableZoom=true; v.controls.enableRotate=true; v.controls.enablePan=false;
-    v.camera.position.set(0,1.6,3);
-    v.scene.add(new THREE.AmbientLight(0xffffff,0.6));
-    const dl = new THREE.DirectionalLight(0xffffff,0.7);
+    v.controls.enableZoom = true;
+    v.controls.enableRotate = true;
+    v.controls.enablePan = false;
+    v.camera.position.set(0, 1.6, 3);
+    v.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.7);
     dl.position.set(5,10,7); v.scene.add(dl);
+    v.setSize( Math.min(420, v.canvas.clientWidth), Math.min(420, v.canvas.clientHeight) );
   });
 
   toggleThemeBtn.addEventListener('click', ()=>{
@@ -189,93 +197,114 @@
   });
 
   // —————————————————————————————————————————————
-  // FIXED FILE INPUT HANDLER
-  fileInput.addEventListener('change', e => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    if (!f.type.includes('png')) { alert('Please upload a PNG skin.'); e.target.value=''; return; }
+  // Fixed File Input Handling
+  // —————————————————————————————————————————————
+  async function loadImageFromFile(file) {
+      if (!file) return null;
+      if (!file.type.includes('png')) { alert('Please upload a PNG.'); return null; }
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = ev => {
+              const img = new Image();
+              img.onload = () => resolve(img);
+              img.onerror = e => reject(e);
+              img.src = ev.target.result;
+          };
+          reader.onerror = e => reject(e);
+          reader.readAsDataURL(file);
+      });
+  }
 
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const img = new Image();
-      img.onload = () => {
-        loadedImage = img;
-        dimsLabel.textContent = img.width + '×' + img.height;
-        drawToCanvas(before2d, img);
-        detectedSlim = detectSlimModel(img);
-        detectedLabel.textContent = detectedSlim ? 'Slim (Alex)' : 'Wide (Steve)';
-
-        // auto-convert immediately
-        applyConversionAndPreview();
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(f);
-
-    e.target.value=''; // allow re-upload of same file
+  fileInput.addEventListener('change', async e => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      try {
+          const img = await loadImageFromFile(f);
+          loadedImage = img;
+          dimsLabel.textContent = img.width + '×' + img.height;
+          drawToCanvas(before2d, img);
+          detectedSlim = detectSlimModel(img);
+          detectedLabel.textContent = detectedSlim ? 'Slim (Alex)' : 'Wide (Steve)';
+          applyConversionAndPreview();
+      } catch (err) {
+          console.error('Failed to load image', err);
+          alert('Failed to load the image.');
+      }
+      e.target.value=''; // allow re-upload
   });
 
-  function drawToCanvas(canvas,img,displaySize=160){
+  function drawToCanvas(canvas, img, displaySize=160){
     const ctx = canvas.getContext('2d');
-    const scale = Math.min(displaySize/img.width, displaySize/img.height);
-    const w = Math.round(img.width*scale), h=Math.round(img.height*scale);
-    canvas.width=w; canvas.height=h;
-    ctx.imageSmoothingEnabled=false;
-    ctx.clearRect(0,0,w,h);
-    ctx.drawImage(img,0,0,img.width,img.height,0,0,w,h);
+    const scale = Math.min(displaySize / img.width, displaySize / img.height);
+    const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+    canvas.width = w; canvas.height = h;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img, 0,0, img.width, img.height, 0,0, w, h);
   }
 
   function detectSlimModel(img){
-    const w=img.width,h=img.height;
-    const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
-    const ctx=tmp.getContext('2d'); ctx.drawImage(img,0,0);
-    const scaleX=w/64, scaleY=h/32;
-    const sampleX=Math.round(47*scaleX), sy=Math.round(16*scaleY), sh=Math.max(4,Math.round(12*scaleY));
+    const w = img.width, h = img.height;
+    const tmp = document.createElement('canvas'); tmp.width=w; tmp.height=h;
+    const ctx = tmp.getContext('2d'); ctx.drawImage(img,0,0);
+    const scaleX = w / 64; const scaleY = h / 32;
+    const sampleX = Math.round(47 * scaleX);
+    const sy = Math.round(16 * scaleY);
+    const sh = Math.max(4, Math.round(12 * scaleY));
     try {
-      const data = ctx.getImageData(sampleX,sy,1,sh).data;
-      let opaque=0;
-      for(let i=0;i<data.length;i+=4) if(data[i+3]>12) opaque++;
+      const data = ctx.getImageData(sampleX, sy, 1, sh).data;
+      let opaque = 0;
+      for (let i=0;i<data.length;i+=4) if(data[i+3]>12) opaque++;
       return opaque < (sh*0.45);
     } catch(e){ return false; }
   }
 
   function convertLegacyToModern(img, slim){
-    const src = document.createElement('canvas');
-    let sw=img.width,sh=img.height,scale=1;
-    if(sw===128){scale=0.5; sw=64; sh=Math.round(sh*scale);}
-    src.width=sw; src.height=sh; const sctx=src.getContext('2d'); sctx.imageSmoothingEnabled=false;
+    let sourceCanvas = document.createElement('canvas');
+    let sw = img.width, sh = img.height, scale=1;
+    if(sw===128){ scale=0.5; sw=64; sh=Math.round(sh*scale); }
+    sourceCanvas.width=sw; sourceCanvas.height=sh;
+    const sctx = sourceCanvas.getContext('2d'); sctx.imageSmoothingEnabled=false;
     if(scale!==1) sctx.drawImage(img,0,0,sw,sh); else sctx.drawImage(img,0,0);
-    if(!(sw===64&&(sh===32||sh===64))) throw new Error('Unsupported dimensions. Expected legacy 64×32.');
-    const dst=document.createElement('canvas'); dst.width=64; dst.height=64;
-    const dctx=dst.getContext('2d'); dctx.imageSmoothingEnabled=false;
-    dctx.clearRect(0,0,64,64); dctx.drawImage(src,0,0);
-    try{
-      dctx.drawImage(src,4,16,4,16,20,48,4,16);
-      dctx.drawImage(src,4,16,4,16,16,48,4,16);
-      const armWidth=slim?3:4;
-      if(!slim){ dctx.drawImage(src,40,16,4,16,32,48,4,16); }
-      else{ dctx.drawImage(src,40,16,3,16,32,48,3,16); dctx.drawImage(src,40,16,3,16,36,48,3,16); }
-    }catch(e){console.warn('copy failed',e);}
+    if(!(sw===64 && (sh===32||sh===64))) throw new Error('Unsupported dimensions. Expected legacy 64×32 (or 128 scaled).');
+    const dst = document.createElement('canvas'); dst.width=64; dst.height=64;
+    const dctx = dst.getContext('2d'); dctx.imageSmoothingEnabled=false; dctx.clearRect(0,0,64,64); dctx.drawImage(sourceCanvas,0,0);
+    try{ dctx.drawImage(sourceCanvas,4,16,4,16,20,48,4,16); dctx.drawImage(sourceCanvas,4,16,4,16,16,48,4,16); }catch(e){console.warn('leg copy failed',e);}
+    const armWidth = slim?3:4;
+    try{ dctx.drawImage(sourceCanvas,40,16,armWidth,16,36,48,armWidth,16); if(!slim) dctx.drawImage(sourceCanvas,40,16,4,16,32,48,4,16); else dctx.drawImage(sourceCanvas,40,16,3,16,32,48,3,16);}catch(e){console.warn('arm copy failed',e);}
     return dst;
   }
 
   function applyConversionAndPreview(){
     if(!loadedImage){ alert('No image loaded.'); return; }
-    convertedCanvas = convertLegacyToModern(loadedImage, detectedSlim);
-    drawToCanvas(after2d, convertedCanvas);
+    try{ convertedCanvas = convertLegacyToModern(loadedImage, detectedSlim); }catch(err){ alert('Conversion error: '+(err.message||err)); return; }
+    drawToCanvas(after2d,convertedCanvas,160);
     downloadBtn.style.display='inline-block';
-    downloadBtn.href=convertedCanvas.toDataURL('image/png');
-    downloadBtn.download='modern_skin.png';
+    downloadBtn.href = convertedCanvas.toDataURL('image/png');
+    downloadBtn.download = 'modern_skin.png';
     viewerBefore.loadSkin(loadedImage.src);
-    viewerAfter.loadSkin(convertedCanvas.toDataURL('image/png'),{slim:detectedSlim});
+    viewerAfter.loadSkin(convertedCanvas.toDataURL('image/png'), { slim: detectedSlim });
+    syncPartToggleStates();
   }
 
   convertBtn.addEventListener('click', applyConversionAndPreview);
-  downloadBtn.addEventListener('click', e=>{if(!convertedCanvas){e.preventDefault();alert('Nothing to download yet.');}});
 
-  // initial labels
-  detectedLabel.textContent='—';
-  dimsLabel.textContent='—';
+  function syncPartToggleStates(){
+    if(!viewerAfter || !viewerAfter.skin) return;
+    const parts = ['head','body','leftArm','rightArm','leftLeg','rightLeg','hat','jacket','leftSleeve','rightSleeve','leftPants','rightPants'];
+    parts.forEach(p=>{
+      const inp = partTogglesContainer.querySelector(`input[data-part=${p}]`);
+      if(inp) viewerAfter.skin[p].visible = inp.checked;
+    });
+  }
+
+  resetPartsBtn.addEventListener('click', ()=>{
+    partTogglesContainer.querySelectorAll('input').forEach(inp=>inp.checked=true);
+    syncPartToggleStates();
+  });
+
+  partTogglesContainer.addEventListener('change', syncPartToggleStates);
+
   </script>
 </body>
 </html>
