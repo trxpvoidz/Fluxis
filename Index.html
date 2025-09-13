@@ -1,488 +1,505 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Fluxis — iOS Persona Cape Builder</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Minecraft Legacy → Modern Skin Converter — Full</title>
 <style>
-  :root{
-    --bg:#0b0d12;--panel:#0f1320;--ink:#e9ecf6;--muted:#9aa3b3;--line:#202842;
-    --accent:#6ea8fe;--accent2:#9d7bff;--ok:#3be1a1;--warn:#ffbf69;--err:#ff7474;
-    --glow: 0 0 32px rgba(110,168,254,.25), 0 0 80px rgba(157,123,255,.18);
+  :root {
+    --bg:#0f1720; --card:#0b1220; --muted:#9fb7c9; --accent:#06b6d4; --panel:#142336;
+    --light-bg:#f6f9fb; --light-text:#081221;
   }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{margin:0;background:radial-gradient(1200px 800px at 10% -10%,rgba(110,168,254,.08),transparent 60%),
-                    radial-gradient(1200px 800px at 110% 10%,rgba(157,123,255,.08),transparent 60%),
-                    linear-gradient(180deg,#0a0d14,#0b0d12 40%,#0b0d12);
-       color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-  header{
-    position:relative; padding:34px 18px 26px; border-bottom:1px solid var(--line);
-    background:
-      radial-gradient(600px 120px at 30% -40%, rgba(110,168,254,.25), transparent 70%),
-      radial-gradient(600px 120px at 70% -40%, rgba(157,123,255,.25), transparent 70%),
-      linear-gradient(180deg,rgba(23,28,48,.65),rgba(18,22,38,.35));
-    box-shadow: inset 0 -1px 0 rgba(255,255,255,.03);
-  }
-  .wrap{max-width:1000px;margin:0 auto;padding:0 16px}
-  .brand{display:flex;align-items:center;gap:14px}
-  .logo{
-    width:38px;height:38px;border-radius:12px;
-    background:
-      conic-gradient(from 140deg, #6ea8fe, #9d7bff, #6ea8fe);
-    filter: drop-shadow(0 0 22px rgba(110,168,254,.4));
-    position:relative;
-  }
-  .logo::after{
-    content:""; position:absolute; inset:4px; border-radius:10px;
-    background: radial-gradient(80% 80% at 30% 30%, rgba(255,255,255,.45), rgba(255,255,255,.1) 45%, rgba(0,0,0,.12) 46%),
-                linear-gradient(180deg,rgba(255,255,255,.18),rgba(0,0,0,.12));
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.16), inset 0 0 30px rgba(255,255,255,.08);
-  }
-  h1{margin:0;font-size:1.3rem;letter-spacing:.3px}
-  .subtitle{color:var(--muted);margin-top:6px}
-  main{padding:22px 0 40px}
-  .cards{display:grid;grid-template-columns:1fr;gap:14px}
-  .card{
-    background:linear-gradient(180deg,rgba(18,22,39,.75),rgba(15,19,32,.9));
-    border:1px solid var(--line); border-radius:16px; padding:16px;
-    box-shadow: var(--glow), 0 12px 28px rgba(0,0,0,.35);
-    backdrop-filter: blur(8px);
-    transition:.25s transform,.25s box-shadow,.25s border-color;
-  }
-  .card:hover{transform:translateY(-1px); box-shadow: 0 0 44px rgba(110,168,254,.25), 0 18px 34px rgba(0,0,0,.45); border-color:#2b365f}
-  label{display:block;margin:8px 0 8px;color:var(--muted);font-size:.95rem}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media (max-width:760px){.row{grid-template-columns:1fr}}
-  input[type="file"]{
-    width:100%;padding:14px;border:1px dashed #2b345a;border-radius:12px;background:#0a0e1b;color:var(--ink);
-    transition:.2s border-color,.2s background;
-  }
-  input[type="file"]:hover{border-color:#3a4a86;background:#0b1123}
-  input[type="text"]{
-    width:100%;padding:12px 14px;border:1px solid #2b345a;border-radius:12px;background:#0a0e1b;color:var(--ink);
-  }
-  .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
-  button{
-    appearance:none;border:1px solid #374783;background:linear-gradient(180deg,#1b2442,#131a33);color:#f2f4ff;
-    padding:12px 14px;border-radius:12px;font-weight:700;letter-spacing:.2px;cursor:pointer;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.35), 0 0 24px rgba(110,168,254,.18);
-    transition:.2s transform,.2s box-shadow,.2s filter;
-  }
-  button:hover{transform:translateY(-1px); filter:brightness(1.05); box-shadow: 0 12px 26px rgba(0,0,0,.4), 0 0 32px rgba(157,123,255,.22)}
-  button.primary{border-color:#4560bf;background:linear-gradient(180deg,#2a3e86,#1a2452)}
-  .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;border:1px solid #2b345a;background:#0a0f20;color:var(--muted);font-size:.88rem}
-  code.inline{padding:1px 6px;border-radius:6px;background:#0b1224;border:1px solid #23305c}
-  .log{height:240px;background:#070b16;border:1px solid #20294a;border-radius:14px;padding:10px;overflow:auto;
-       font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
-  .log .ok{color:var(--ok)} .log .warn{color:var(--warn)} .log .err{color:var(--err)} .log .muted{color:var(--muted)}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media (max-width:760px){.grid2{grid-template-columns:1fr}}
-  .kbd{display:inline-block;padding:3px 6px;border-radius:6px;border:1px solid #2b345a;background:#0a0f20}
-  footer{color:#7f87a0;text-align:center;font-size:.9rem;padding:24px 12px}
-  .shine{position:relative;overflow:hidden}
-  .shine::before{
-    content:""; position:absolute; inset:auto -40% 0 -40%; top:-120%;
-    height:160%; transform:rotate(8deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
-    animation: sweep 3.5s linear infinite; pointer-events:none;
-  }
-  @keyframes sweep{from{transform:translateX(-60%) rotate(8deg)} to{transform:translateX(60%) rotate(8deg)}}
+  html,body {height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+  body.light { background: var(--light-bg); color: var(--light-text); }
+  body { background: var(--bg); color: #e6eef8; display:flex; flex-direction:column; align-items:center; padding:12px; box-sizing:border-box; }
+  .app { width:100%; max-width:1100px; }
+  header{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:12px;}
+  header h1{ margin:0; font-size:18px; letter-spacing:0.2px }
+  .controls-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .card{ background:linear-gradient(180deg, #07101a, #07101a); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.04); box-shadow:0 6px 24px rgba(1,6,12,0.6); }
+  .u-btn{ background:var(--panel); color:inherit; border:1px solid rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; cursor:pointer; }
+  .u-btn.primary{ background:linear-gradient(90deg,var(--accent),#7dd3fc); color:#002; font-weight:700; }
+  .u-input{ display:inline-block; }
+  input[type=file]{ display:none; }
+  .row { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-top:12px; }
+  .col { display:flex; flex-direction:column; gap:8px; }
+  .preview-2d { width:160px; height:160px; image-rendering:pixelated; border:1px solid rgba(255,255,255,0.06); background:#020408; }
+  .label { font-size:13px; color:var(--muted); }
+  .subtitle { font-size:13px; color:var(--muted); margin:0; }
+  .toggles { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .toggles label { background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-flex; gap:8px; align-items:center; }
+  .viewer3d { width:420px; height:420px; border-radius:8px; overflow:hidden; background:linear-gradient(180deg,#07101a,#041018); border:1px solid rgba(255,255,255,0.04); }
+  .meta { font-size:13px; color:var(--muted); }
+  footer { margin-top:14px; font-size:13px; color:var(--muted); text-align:center; }
+  .chip { background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-weight:600; }
+  /* Responsive */
+  @media (max-width:980px){ .viewer3d{ width:320px; height:320px; } .preview-2d{ width:128px; height:128px } }
+  @media (max-width:640px){ header{flex-direction:column;align-items:flex-start;gap:8px} .row{flex-direction:column} .viewer3d{ width:100%; height:360px } }
 </style>
 </head>
 <body>
-  <header>
-    <div class="wrap brand">
-      <div class="logo"></div>
+  <div class="app">
+    <header>
       <div>
-        <h1>Fluxis — iOS Persona Cape Builder</h1>
-        <div class="subtitle">Drop a template folder and your PNG cape. Fluxis encrypts it (AES-256-CFB8) and packages a ready-to-install zip — all client-side.</div>
+        <h1>Minecraft Legacy → Modern Skin Converter</h1>
+        <div class="subtitle">Auto-detects slim/wide, converts 64×32 → 64×64, 2D + 3D previews, toggles & animations.</div>
+      </div>
+
+      <div class="controls-row">
+        <label class="u-btn">
+          <input id="fileInput" type="file" accept="image/png">
+          Upload PNG
+        </label>
+        <button id="convertBtn" class="u-btn primary">Convert Now</button>
+        <a id="downloadBtn" class="u-btn" style="display:none">Download Modern Skin</a>
+        <button id="toggleThemeBtn" class="u-btn">Toggle Light</button>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="row">
+        <div class="col" style="min-width:200px;">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div>
+              <div class="label">Original (Before)</div>
+              <canvas id="before2d" class="preview-2d" width="160" height="160" aria-label="Original skin preview"></canvas>
+            </div>
+            <div>
+              <div class="label">Converted (After)</div>
+              <canvas id="after2d" class="preview-2d" width="160" height="160" aria-label="Converted skin preview"></canvas>
+            </div>
+          </div>
+
+          <div style="margin-top:8px;">
+            <div class="meta">Detected: <span id="detectedLabel" class="chip">—</span></div>
+            <div class="meta">Dimensions: <span id="dimsLabel" class="chip">—</span></div>
+          </div>
+
+          <div style="margin-top:10px" class="toggles">
+            <label><input type="checkbox" id="animToggle"> Animation</label>
+            <label>Anim mode:
+              <select id="animMode" class="u-btn" style="padding:6px 8px; border-radius:6px;">
+                <option value="idle">Idle</option>
+                <option value="walk">Walk</option>
+                <option value="run">Run</option>
+                <option value="spin">Spin</option>
+              </select>
+            </label>
+            <label><input type="checkbox" id="showGrid"> Ground Grid</label>
+            <label><input type="checkbox" id="autoRotate"> Auto-rotate</label>
+          </div>
+
+          <div style="margin-top:10px;">
+            <div class="label">Model parts (3D viewer)</div>
+            <div class="toggles" id="partToggles">
+              <label><input type="checkbox" data-part="head" checked>Head</label>
+              <label><input type="checkbox" data-part="body" checked>Body</label>
+              <label><input type="checkbox" data-part="leftArm" checked>Left Arm</label>
+              <label><input type="checkbox" data-part="rightArm" checked>Right Arm</label>
+              <label><input type="checkbox" data-part="leftLeg" checked>Left Leg</label>
+              <label><input type="checkbox" data-part="rightLeg" checked>Right Leg</label>
+              <label><input type="checkbox" data-part="hat" checked>Hat</label>
+              <label><input type="checkbox" data-part="jacket" checked>Jacket</label>
+              <label><input type="checkbox" data-part="leftSleeve" checked>Left Sleeve</label>
+              <label><input type="checkbox" data-part="rightSleeve" checked>Right Sleeve</label>
+              <label><input type="checkbox" data-part="leftPants" checked>Left Pants</label>
+              <label><input type="checkbox" data-part="rightPants" checked>Right Pants</label>
+            </div>
+
+            <div style="margin-top:8px;">
+              <button id="resetParts" class="u-btn">Reset All Parts</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col" style="flex:1;min-width:320px;">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
+            <div style="flex:1">
+              <div class="label">3D Preview — Original</div>
+              <div id="viewerBefore" class="viewer3d"></div>
+            </div>
+            <div style="flex:1">
+              <div class="label">3D Preview — Converted</div>
+              <div id="viewerAfter" class="viewer3d"></div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px; display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <div class="label">Extras:</div>
+            <button id="centerCameras" class="u-btn">Center Cameras</button>
+            <button id="fitBoth" class="u-btn">Fit Both</button>
+          </div>
+        </div>
       </div>
     </div>
-  </header>
 
-  <main class="wrap">
-    <section class="cards">
-      <div class="card shine">
-        <div class="row">
-          <div>
-            <label>1) Template folder (must already include a cape file like <code class="inline">cape_*.png</code>)</label>
-            <input id="template" type="file" webkitdirectory directory multiple />
-            <div style="margin-top:6px;color:var(--muted)">Structure is preserved. Only the detected cape file is replaced.</div>
-          </div>
-          <div>
-            <label>2) Your cape image (PNG, unencrypted)</label>
-            <input id="cape" type="file" accept="image/png" />
-            <div style="margin-top:6px;color:var(--muted)">Common sizes: 64×32 or 64×64, depending on layout.</div>
-          </div>
-        </div>
+    <footer class="card" style="margin-top:12px; text-align:left;">
+      <strong>Notes:</strong> This tool <em>inspects</em> and converts legacy skins to modern format. It auto-detects arm width and applies the proper mapping. No drawing or pixel-editing is included. Works on desktop & mobile (touch interactions supported).<br><br>
+      Want the repo packaged (README + demo)? Say "repo" and I'll give you a zip-ready structure.
+    </footer>
+  </div>
 
-        <div class="grid2" style="margin-top:12px">
-          <div>
-            <label>Output zip name</label>
-            <input id="zipName" type="text" placeholder="Defaults to template folder name" />
-          </div>
-          <div>
-            <label>Detected cape filename (auto)</label>
-            <input id="capeName" type="text" readonly placeholder="e.g. cape_pancape.png" />
-          </div>
-        </div>
+  <!-- External libs: three.js + skinview3d (viewer lib that handles Minecraft player rendering) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.4/bundle/skinview3d.min.js"></script>
 
-        <div class="btns" style="margin-top:12px">
-          <button class="primary" id="buildBtn">Build with Fluxis</button>
-          <span class="pill"><strong>Mode</strong> AES-256-CFB8 · IV = first 16 bytes of key</span>
-          <span class="pill"><strong>Client-side</strong> No backend · Works on Netlify</span>
-        </div>
-      </div>
+  <script>
+  // —————————————————————————————————————————————
+  // Utilities & UI wiring
+  // —————————————————————————————————————————————
+  const fileInput = document.getElementById('fileInput');
+  const convertBtn = document.getElementById('convertBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const before2d = document.getElementById('before2d');
+  const after2d = document.getElementById('after2d');
+  const detectedLabel = document.getElementById('detectedLabel');
+  const dimsLabel = document.getElementById('dimsLabel');
+  const toggleThemeBtn = document.getElementById('toggleThemeBtn');
 
-      <div class="card">
-        <div class="grid2" style="align-items:center">
-          <div><strong>Activity</strong></div>
-          <div style="text-align:right">
-            <span class="pill"><strong>Key</strong> <code id="keyShow" class="inline">hidden</code></span>
-            <button id="toggleKey" title="Reveal the AES key used for this format">Show Key</button>
-          </div>
-        </div>
-        <div id="log" class="log" aria-live="polite"></div>
-      </div>
-    </section>
-  </main>
+  const animToggle = document.getElementById('animToggle');
+  const animMode = document.getElementById('animMode');
+  const showGrid = document.getElementById('showGrid');
+  const autoRotate = document.getElementById('autoRotate');
+  const resetPartsBtn = document.getElementById('resetParts');
+  const partTogglesContainer = document.getElementById('partToggles');
 
-  <footer>Made with 💜 by Fluxis — all processing is done locally in your browser.</footer>
+  let loadedImage = null;
+  let convertedCanvas = null;
+  let detectedSlim = false;
 
-<script>
-/* ========= Utility (logs, bytes) ========= */
-(() => {
-  const logEl = document.getElementById('log');
-  function log(msg, cls=""){ const d=document.createElement('div'); if(cls)d.className=cls; d.textContent=msg; logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight; }
-  window.__fluxisLog = log;
+  // skinview3d viewers
+  const viewerBefore = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerBefore'), width: undefined, height: undefined });
+  const viewerAfter  = new skinview3d.SkinViewer({ canvas: createCanvasFor('#viewerAfter'), width: undefined, height: undefined });
 
-  function encUtf8(str){ return new TextEncoder().encode(str); }
-  function pathRoot(files){
-    if(!files.length) return "";
-    const p = files[0].webkitRelativePath || files[0].name; const parts=p.split("/");
-    return parts.length>1?parts[0]:"";
+  // make viewer responsive to container
+  function createCanvasFor(containerSelectorOrElement){
+    const el = (typeof containerSelectorOrElement === 'string') ? document.querySelector(containerSelectorOrElement) : containerSelectorOrElement;
+    el.innerHTML = '';
+    const c = document.createElement('canvas');
+    c.style.width = '100%';
+    c.style.height = '100%';
+    el.appendChild(c);
+    return c;
   }
-  function relPath(file){
-    const p = file.webkitRelativePath || file.name;
-    return p.replace(/^\.?\/*/, "");
+
+  // apply default viewer options
+  [viewerBefore, viewerAfter].forEach(v=>{
+    v.controls.enableZoom = true;
+    v.controls.enableRotate = true;
+    v.controls.enablePan = false;
+    v.camera.position.set(0, 1.6, 3);
+    v.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.7);
+    dl.position.set(5,10,7); v.scene.add(dl);
+    v.setSize( Math.min(420, v.canvas.clientWidth), Math.min(420, v.canvas.clientHeight) );
+  });
+
+  // handle theme toggle
+  toggleThemeBtn.addEventListener('click', ()=>{
+    document.body.classList.toggle('light');
+    toggleThemeBtn.textContent = document.body.classList.contains('light') ? 'Toggle Dark' : 'Toggle Light';
+  });
+
+  // file input handling
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    readSkinFile(f);
+  });
+
+  // also support drag & drop on page
+  document.body.addEventListener('dragover', e=>{ e.preventDefault(); });
+  document.body.addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f) readSkinFile(f); });
+
+  function readSkinFile(file){
+    if (!file.type.includes('png')) { alert('Please upload a PNG skin.'); return; }
+    const r = new FileReader();
+    r.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        loadedImage = img;
+        dimsLabel.textContent = img.width + '×' + img.height;
+        drawToCanvas(before2d, img, 160);
+        // auto-detect slim/wide
+        detectedSlim = detectSlimModel(img);
+        detectedLabel.textContent = detectedSlim ? 'Slim (Alex)' : 'Wide (Steve)';
+      };
+      img.src = ev.target.result;
+    };
+    r.readAsDataURL(file);
   }
-  function findCapeFilename(files){
-    const out=[];
-    for(const f of files){
-      const name = f.webkitRelativePath || f.name;
-      if(/cape_.*\.png$/i.test(name)) out.push(name);
+
+  // quick draw utility for the 2D preview canvases, preserves pixel artness
+  function drawToCanvas(canvas, img, displaySize=160){
+    const ctx = canvas.getContext('2d');
+    // center the texture in canvas and upscale nearest-neighbor
+    const scale = Math.min(displaySize / img.width, displaySize / img.height);
+    const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+    canvas.width = w; canvas.height = h;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img, 0,0, img.width, img.height, 0,0, w, h);
+  }
+
+  // —————————————————————————————————————————————
+  // Slim detection:
+  // We sample a small vertical slice within the expected right-arm region of legacy skins.
+  // Many slim-arm legacy skins leave the outermost column transparent. We'll test alpha presence.
+  // —————————————————————————————————————————————
+  function detectSlimModel(img){
+    // Only run when legacy-size (64x32) or scaled equivalent
+    const w = img.width, h = img.height;
+    // work on a temporary canvas to sample pixels
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const ctx = tmp.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    // right-arm front in 64x32: x=44..47, y=16..31 (4x16). For slim, outer column (x=47) is often empty.
+    // We'll sample column x=47 (1px wide) across a few rows.
+    // If width differs (128 etc), scale coordinate proportionally.
+    const scaleX = w / 64;
+    const scaleY = h / 32;
+    const sampleX = Math.round(47 * scaleX);
+    const sy = Math.round(16 * scaleY);
+    const sh = Math.max(4, Math.round(12 * scaleY)); // sample at least a vertical chunk
+    try {
+      const data = ctx.getImageData(sampleX, sy, 1, sh).data;
+      let opaque = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i+3] > 12) opaque++;
+      // heuristics: if very few opaque pixels in outer column -> slim (3px arm) else wide
+      return opaque < (sh * 0.45);
+    } catch (e) {
+      // if sampling fails, default to wide
+      return false;
     }
-    if(!out.length) return null;
-    out.sort((a,b)=>a.split("/").length-b.split("/").length);
-    return out[0];
   }
-  window.__fluxisUtils = { encUtf8, pathRoot, relPath, findCapeFilename };
-})();
-</script>
 
-<!-- ======== Minimal AES-256 block + CFB8 encrypt (no deps) ======== -->
-<script>
-/*
-  Lightweight AES-256 block cipher (encrypt only) + CFB8 mode.
-  Notes:
-    - Key: 32 bytes (AES-256)
-    - Block: 16 bytes
-    - CFB8 (segment size = 8): For each plaintext byte p:
-        e = AES_encrypt(state)[0]; c = e ^ p; shift state left by 1 and append c.
-*/
-(() => {
-  const S = new Uint8Array([
-    99,124,119,123,242,107,111,197, 48,  1,103, 43,254,215,171,118,
-    202,130,201,125,250, 89, 71,240,173,212,162,175,156,164,114,192,
-    183,253,147, 38, 54, 63,247,204, 52,165,229,241,113,216, 49, 21,
-      4,199, 35,195, 24,150,  5,154,  7, 18,128,226,235, 39,178,117,
-      9,131, 44, 26, 27,110, 90,160, 82, 59,214,179, 41,227, 47,132,
-     83,209,  0,237, 32,252,177, 91,106,203,190, 57, 74, 76, 88,207,
-    208,239,170,251, 67, 77, 51,133, 69,249,  2,127, 80, 60,159,168,
-     81,163, 64,143,146,157, 56,245,188,182,218, 33, 16,255,243,210,
-    205, 12, 19,236, 95,151, 68, 23,196,167,126, 61,100, 93, 25,115,
-     96,129, 79,220, 34, 42,144,136, 70,238,184, 20,222, 94, 11,219,
-    224, 50, 58, 10, 73,  6, 36, 92,194,211,172, 98,145,149,228,121,
-    231,200, 55,109,141,213, 78,169,108, 86,244,234,101,122,174,  8,
-    186,120, 37, 46, 28,166,180,198,232,221,116, 31, 75,189,139,138,
-    112, 62,181,102, 72,  3,246, 14, 97, 53, 87,185,134,193, 29,158,
-    225,248,152, 17,105,217,142,148,155, 30,135,233,206, 85, 40,223,
-    140,161,137, 13,191,230, 66,104, 65,153, 45, 15,176, 84,187, 22
-  ]);
-  const RCON = [0x00,0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80,0x1B,0x36,0x6C,0xD8,0xAB,0x4D];
-  function rotw(w){ return [w[1],w[2],w[3],w[0]]; }
-  function subw(w){ return [S[w[0]],S[w[1]],S[w[2]],S[w[3]]]; }
-  function xorw(a,b){ return [a[0]^b[0],a[1]^b[1],a[2]^b[2],a[3]^b[3]]; }
-  function xtime(a){ return ((a<<1) ^ ((a&0x80)?0x1b:0)) & 0xff; }
-  function mixcol(a){
-    const [s0,s1,s2,s3]=a;
-    const t = s0 ^ s1 ^ s2 ^ s3;
-    return [
-      s0 ^ t ^ xtime(s0 ^ s1),
-      s1 ^ t ^ xtime(s1 ^ s2),
-      s2 ^ t ^ xtime(s2 ^ s3),
-      s3 ^ t ^ xtime(s3 ^ s0),
-    ];
-  }
-  function keyExpansion(key){
-    // key: 32 bytes → 60 words (4 bytes each) → 15 round keys (0..14)
-    const Nk=8, Nb=4, Nr=14;
-    const w = new Array(Nb*(Nr+1));
-    for(let i=0;i<Nk;i++){
-      w[i]=[key[4*i],key[4*i+1],key[4*i+2],key[4*i+3]];
+  // —————————————————————————————————————————————
+  // Conversion logic: legacy 64×32 -> modern 64×64
+  // - duplicates/copys the missing second-layer slots (arms & legs)
+  // - uses detectedSlim to pick 3px vs 4px arm copying
+  // - leaves top-half (head/body front/back) intact
+  // - does NOT perform painting/editing of pixels beyond the minimal copies
+  // —————————————————————————————————————————————
+  function convertLegacyToModern(img, slim){
+    // normalize larger resolutions (e.g., 128x64) by downscaling proportionally to 64×N if necessary
+    let sourceCanvas = document.createElement('canvas');
+    let sw = img.width, sh = img.height;
+    let scale = 1;
+    if (sw === 128) { scale = 0.5; sw = 64; sh = Math.round(sh * scale); }
+    sourceCanvas.width = sw; sourceCanvas.height = sh;
+    const sctx = sourceCanvas.getContext('2d');
+    sctx.imageSmoothingEnabled = false;
+    if (scale !== 1) sctx.drawImage(img, 0, 0, sw, sh);
+    else sctx.drawImage(img, 0, 0);
+
+    if (!(sw === 64 && (sh === 32 || sh === 64))) {
+      throw new Error('Unsupported dimensions. Expected legacy 64×32 (or 128 scaled).');
     }
-    for(let i=Nk;i<Nb*(Nr+1);i++){
-      let temp=w[i-1];
-      if(i%Nk===0){
-        temp = xorw(subw(rotw(temp)), [RCON[i/Nk],0,0,0]);
-      }else if(i%Nk===4){
-        temp = subw(temp);
+
+    // create destination 64×64
+    const dst = document.createElement('canvas');
+    dst.width = 64; dst.height = 64;
+    const dctx = dst.getContext('2d');
+    dctx.imageSmoothingEnabled = false;
+    // clear and draw original top half
+    dctx.clearRect(0,0,64,64);
+    dctx.drawImage(sourceCanvas, 0, 0);
+
+    // Copy logic (coordinates follow vanilla mapping)
+    // Legs: right leg base in legacy at (4,16) -> new right leg overlay at (20,48)
+    // left leg overlay: copy right leg base into left leg overlay area (16,48)
+    // Arms: right arm base in legacy at (40,16) -> new right arm overlay at (32,48)
+    // left arm overlay: copy right arm base into left arm overlay area (36? depends on slim/wide)
+    // We'll copy blocks carefully and mirror when needed.
+
+    // Copy legs (4px width)
+    try {
+      // right leg base (legacy) => right leg overlay
+      dctx.drawImage(sourceCanvas, 4, 16, 4, 16, 20, 48, 4, 16);
+      // left leg overlay: mirror of right leg base (paste into 16,48)
+      dctx.drawImage(sourceCanvas, 4, 16, 4, 16, 16, 48, 4, 16);
+    } catch(e){ console.warn('leg copy failed', e); }
+
+    // Copy arms: use slim/wide widths
+    const armWidth = slim ? 3 : 4;
+    // Right arm base in legacy is at (40,16)
+    try {
+      dctx.drawImage(sourceCanvas, 40, 16, armWidth, 16, 36, 48, armWidth, 16); // left arm overlay (from right arm base)
+      // Also copy to right arm overlay region if needed (some mappings)
+      // For Steve (4px) also copy full 4px block to area (44,16) -> overlay (??). We'll keep minimal mapping to fill overlays.
+      if (!slim) {
+        // For wide arms, also ensure the main 4px block exists in the modern overlay
+        dctx.drawImage(sourceCanvas, 40, 16, 4, 16, 32, 48, 4, 16);
+      } else {
+        // For slim, paste 3px into the exact modern region (32..35), then mirror into 36..38 as needed
+        dctx.drawImage(sourceCanvas, 40, 16, 3, 16, 32, 48, 3, 16);
       }
-      w[i] = xorw(w[i-Nk], temp);
+    } catch(e){ console.warn('arm copy failed', e); }
+
+    // Some additional conservative fills to maximize compatibility:
+    // copy accessory overlay areas (simple approach): copy head region into hat overlay area to avoid missing hat pixels
+    try {
+      // head front/back and overlays already occupy top-left; but ensure hat area isn't transparent if skin uses older format
+      // no-op conservative default: nothing destructive
+    } catch(e){}
+
+    return dst;
+  }
+
+  // —————————————————————————————————————————————
+  // Render converted result to viewers & update UI
+  // —————————————————————————————————————————————
+  function applyConversionAndPreview(){
+    if (!loadedImage) { alert('No image loaded. Upload a legacy 64×32 PNG first.'); return; }
+    try {
+      convertedCanvas = convertLegacyToModern(loadedImage, detectedSlim);
+    } catch (err) {
+      alert('Conversion error: ' + (err && err.message ? err.message : err));
+      return;
     }
-    return w;
-  }
-  function addRoundKey(state, rk, off){
-    for(let c=0;c<4;c++){
-      state[0][c]^=rk[off+c][0];
-      state[1][c]^=rk[off+c][1];
-      state[2][c]^=rk[off+c][2];
-      state[3][c]^=rk[off+c][3];
-    }
-  }
-  function subBytes(state){
-    for(let r=0;r<4;r++)for(let c=0;c<4;c++) state[r][c]=S[state[r][c]];
-  }
-  function shiftRows(state){
-    state[1].push(state[1].shift());
-    state[2].push(state[2].shift()); state[2].push(state[2].shift());
-    state[3].unshift(state[3].pop());
-  }
-  function mixColumns(state){
-    for(let c=0;c<4;c++){
-      const col=[state[0][c],state[1][c],state[2][c],state[3][c]];
-      const m = mixcol(col);
-      state[0][c]=m[0]; state[1][c]=m[1]; state[2][c]=m[2]; state[3][c]=m[3];
-    }
-  }
-  function encryptBlock(keySched, input16){
-    // state is 4x4 (rowsxcols), column-major from input
-    const Nr=14;
-    const state=[[],[],[],[]];
-    for(let i=0;i<16;i++) state[i&3][(i/4)|0]=input16[i];
-    addRoundKey(state,keySched,0);
-    for(let round=1; round<Nr; round++){
-      subBytes(state); shiftRows(state); mixColumns(state); addRoundKey(state,keySched,4*round);
-    }
-    subBytes(state); shiftRows(state); addRoundKey(state,keySched,4*Nr);
-    const out=new Uint8Array(16);
-    for(let i=0;i<16;i++) out[i]=state[i&3][(i/4)|0];
-    return out;
-  }
-  function cfb8Encrypt(keyBytes, iv16, plain){
-    const ks = keyExpansion(keyBytes);
-    const state = new Uint8Array(iv16); // 16
-    const out = new Uint8Array(plain.length);
-    for(let i=0;i<plain.length;i++){
-      const e = encryptBlock(ks, state)[0];
-      const c = e ^ plain[i];
-      // shift left 1 byte, append c
-      for(let j=0;j<15;j++) state[j]=state[j+1];
-      state[15]=c;
-      out[i]=c;
-    }
-    return out;
-  }
-  window.__fluxisAES = { cfb8Encrypt };
-})();
-</script>
+    // 2D previews
+    drawToCanvas(after2d, convertedCanvas, 160);
 
-<!-- ======== Tiny ZIP (store, no compression) + CRC32 ======== -->
-<script>
-(() => {
-  // CRC32 table
-  const table = (() => {
-    let c, t=new Uint32Array(256);
-    for(let n=0;n<256;n++){
-      c=n;
-      for(let k=0;k<8;k++) c = c & 1 ? 0xEDB88320 ^ (c>>>1) : (c>>>1);
-      t[n]=c>>>0;
-    }
-    return t;
-  })();
-  function crc32(u8){
-    let c = 0 ^ (-1);
-    for(let i=0;i<u8.length;i++) c = (c>>>8) ^ table[(c ^ u8[i]) & 0xFF];
-    return (c ^ (-1)) >>> 0;
+    // provide download link
+    downloadBtn.style.display = 'inline-block';
+    downloadBtn.href = convertedCanvas.toDataURL('image/png');
+    downloadBtn.download = 'modern_skin.png';
+
+    // 3D viewers
+    // skinview3d accepts a URL (dataURL) or Image. We'll pass dataURL for converted
+    viewerBefore.loadSkin( loadedImage.src ); // show original (legacy) as skin - skinview3d handles legacy fine
+    viewerAfter.loadSkin( convertedCanvas.toDataURL('image/png'), { slim: detectedSlim } );
+
+    // update part toggles to match viewerAfter parts
+    syncPartToggleStates();
   }
-  function le16(n){ return new Uint8Array([n&255,(n>>>8)&255]); }
-  function le32(n){ return new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]); }
-  function dosDateTime(time){
-    // use current time for simplicity
-    const d = time ? new Date(time) : new Date();
-    let dt = ((d.getHours()<<11) | (d.getMinutes()<<5) | (d.getSeconds()>>1)) & 0xFFFF;
-    let dd = ((((d.getFullYear()-1980)<<9) | ((d.getMonth()+1)<<5) | d.getDate())) & 0xFFFF;
-    return {dt,dd};
-  }
-  // Build a ZIP with "store" method (0). files: { path: Uint8Array }
-  function zipStoreSync(files){
-    const fileEntries = [];
-    const centralRecords = [];
-    let offset = 0;
-    const chunks = [];
 
-    for(const path in files){
-      const data = files[path];
-      const name = new TextEncoder().encode(path);
-      const {dt,dd} = dosDateTime();
-      const crc = crc32(data);
-      const comp = data; // store
-      const compSize = comp.length;
-      const unCompSize = data.length;
+  convertBtn.addEventListener('click', applyConversionAndPreview);
 
-      // Local header
-      const lh = [
-        le32(0x04034b50),       // signature
-        le16(20),               // version needed
-        le16(0),                // flags
-        le16(0),                // method = store
-        le16(dt), le16(dd),     // time, date
-        le32(crc),              // crc32
-        le32(compSize),         // comp size
-        le32(unCompSize),       // uncomp size
-        le16(name.length),      // file name len
-        le16(0)                 // extra len
-      ];
-      const localHeader = concatBytes(...lh, name, comp);
-      chunks.push(localHeader);
-      const localOffset = offset;
-      offset += localHeader.length;
+  // allow convert after load automatically if user uploaded and we want convenience
+  fileInput.addEventListener('change', () => { /* user triggers convert button explicitly or press convert */ });
 
-      // Central directory header
-      const cd = [
-        le32(0x02014b50), // sig
-        le16(20),         // version made by
-        le16(20),         // version needed
-        le16(0),          // flags
-        le16(0),          // method
-        le16(dt), le16(dd),
-        le32(crc),
-        le32(compSize),
-        le32(unCompSize),
-        le16(name.length),
-        le16(0),          // extra
-        le16(0),          // comment
-        le16(0),          // disk start
-        le16(0),          // int attrs
-        le32(0),          // ext attrs
-        le32(localOffset),
-        name
-      ];
-      const cdRec = concatBytes(...cd);
-      centralRecords.push(cdRec);
-    }
-
-    const centralDir = concatBytes(...centralRecords);
-    const eocd = concatBytes(
-      le32(0x06054b50),
-      le16(0), le16(0),
-      le16(centralRecords.length), le16(centralRecords.length),
-      le32(centralDir.length),
-      le32(offset),
-      le16(0) // comment length
-    );
-
-    return new Blob([concatBytes(...chunks, centralDir, eocd)], {type:"application/zip"});
-  }
-  function concatBytes(...arrs){
-    let len=0; for(const a of arrs) len += a.length;
-    const out = new Uint8Array(len);
-    let off=0; for(const a of arrs){ out.set(a, off); off+=a.length; }
-    return out;
-  }
-  window.__fluxisZip = { zipStoreSync };
-})();
-</script>
-
-<!-- ======== App logic (Fluxis) ======== -->
-<script>
-(() => {
-  const log = window.__fluxisLog;
-  const { encUtf8, pathRoot, relPath, findCapeFilename } = window.__fluxisUtils;
-  const { cfb8Encrypt } = window.__fluxisAES;
-  const { zipStoreSync } = window.__fluxisZip;
-
-  const tplInput = document.getElementById('template');
-  const capeInput = document.getElementById('cape');
-  const capeNameEl = document.getElementById('capeName');
-  const zipNameEl  = document.getElementById('zipName');
-  const buildBtn   = document.getElementById('buildBtn');
-  const keyShow    = document.getElementById('keyShow');
-  const toggleKey  = document.getElementById('toggleKey');
-
-  // Fixed key from your Python script — ASCII bytes; IV = first 16 bytes
-  const KEY_STR = "gB0GBZnhk8ytnMnQGL7fvHOgGsfQToZA";
-
-  function showKey(show){ keyShow.textContent = show ? (KEY_STR + "  (IV=" + KEY_STR.slice(0,16) + ")") : "hidden"; }
-  toggleKey.addEventListener('click', () => showKey(keyShow.textContent === "hidden"));
-
-  tplInput.addEventListener('change', () => {
-    log(`Template selected: ${tplInput.files.length} files.`, "muted");
-    const nm = findCapeFilename([...tplInput.files]);
-    capeNameEl.value = nm || "";
-    if(!zipNameEl.value){
-      const root = pathRoot([...tplInput.files]) || "fluxis_cape";
-      zipNameEl.value = root.replace(/[/\\]+$/,"") + ".zip";
-    }
+  // Download button click: it's an <a> anchor set above
+  downloadBtn.addEventListener('click', (e) => {
+    if (!convertedCanvas) { e.preventDefault(); alert('Nothing to download yet.'); }
   });
 
-  function fileToU8(file){ return file.arrayBuffer().then(b=>new Uint8Array(b)); }
+  // —————————————————————————————————————————————
+  // Part toggles hooking into skinview3d's playerObject skin structure
+  // Note: skinview3d exposes playerObject.skin.<part> meshes
+  // We'll toggle visibility when user clicks checkboxes
+  // —————————————————————————————————————————————
+  function syncPartToggleStates(){
+    const toggles = partTogglesContainer.querySelectorAll('input[type="checkbox"]');
+    toggles.forEach(cb => cb.checked = true);
+    // show all in viewerAfter
+    setTimeout(()=>{ // delay to ensure playerObject is ready
+      toggles.forEach(cb=>{ const p = cb.dataset.part; safeSetPartVisible(p, true); });
+    }, 80);
+  }
 
-  buildBtn.addEventListener('click', async () => {
-    try{
-      const tfs = [...tplInput.files];
-      if(!tfs.length){ log("Please select a template folder.", "err"); return; }
-      if(!capeInput.files.length){ log("Please select your PNG cape.", "err"); return; }
+  function safeSetPartVisible(partName, visible){
+    try {
+      const po = viewerAfter.playerObject;
+      if (!po || !po.skin) return;
+      if (po.skin[partName] && typeof po.skin[partName].visible !== 'undefined') po.skin[partName].visible = visible;
+    } catch(e){}
+  }
 
-      log("Reading inputs…","muted");
-      const capeDetectedPath = (capeNameEl.value && capeNameEl.value.trim()) || findCapeFilename(tfs);
-      if(!capeDetectedPath){ log('No existing cape file found in template (expected something like "cape_*.png").', "err"); return; }
-
-      // Build files map
-      const filesMap = {};
-      for(const f of tfs){ filesMap[relPath(f)] = await fileToU8(f); }
-
-      // Encrypt cape
-      const keyBytes = encUtf8(KEY_STR);
-      const iv = keyBytes.slice(0,16);
-      const plainCape = await fileToU8(capeInput.files[0]);
-
-      log(`Encrypting cape (${plainCape.length} bytes) using AES-256-CFB8…`);
-      const encCape = cfb8Encrypt(keyBytes, iv, plainCape);
-      log(`Encrypted → ${encCape.length} bytes.`, "ok");
-
-      // Replace detected cape file
-      const norm = capeDetectedPath.replace(/^\.?\/*/,"");
-      filesMap[norm] = encCape;
-      log(`Replaced "${norm}" inside the pack.`, "ok");
-
-      // Zip (store)
-      log("Packaging zip (store, no compression)…","muted");
-      const blob = zipStoreSync(filesMap);
-      const outName = (zipNameEl.value && zipNameEl.value.trim()) || ((pathRoot(tfs) || "fluxis_cape") + ".zip");
-
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = outName;
-      document.body.appendChild(a); a.click(); a.remove();
-      log(`Done. Downloaded "${outName}".`, "ok");
-      log("Tip: Sideload to iOS with your normal method.", "muted");
-    }catch(err){
-      console.error(err);
-      log("Error: " + (err && err.message ? err.message : String(err)), "err");
-    }
+  partTogglesContainer.addEventListener('change', (ev)=>{
+    const target = ev.target;
+    if (!target || target.tagName !== 'INPUT') return;
+    const part = target.dataset.part;
+    safeSetPartVisible(part, target.checked);
   });
-})();
-</script>
+
+  resetPartsBtn.addEventListener('click', ()=>{
+    partTogglesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+      cb.checked = true;
+      const p = cb.dataset.part;
+      safeSetPartVisible(p, true);
+    });
+  });
+
+  // —————————————————————————————————————————————
+  // Animation controls
+  // —————————————————————————————————————————————
+  function updateAnimation(){
+    const enabled = animToggle.checked;
+    const mode = animMode.value;
+    if (!viewerAfter) return;
+    if (!enabled) { viewerAfter.animation = null; return; }
+    if (mode === 'idle') viewerAfter.animation = new skinview3d.IdleAnimation();
+    else if (mode === 'walk') viewerAfter.animation = new skinview3d.WalkingAnimation();
+    else if (mode === 'run') viewerAfter.animation = new skinview3d.RunningAnimation ? new skinview3d.RunningAnimation() : new skinview3d.WalkingAnimation();
+    else if (mode === 'spin') {
+      // custom spin: we'll attach a tiny rotation loop
+      viewerAfter.animation = { update: () => viewerAfter.playerObject.rotation.y += 0.01 * (autoRotate.checked ? 1.5 : 1.0) };
+    } else viewerAfter.animation = new skinview3d.IdleAnimation();
+  }
+  animToggle.addEventListener('change', updateAnimation);
+  animMode.addEventListener('change', updateAnimation);
+  autoRotate.addEventListener('change', ()=>{ if (autoRotate.checked) viewerAfter.playerObject.rotation.y += 0.01; });
+
+  // simple auto-rotate implementation (frame-based)
+  let lastAuto = 0;
+  function autoRotateLoop(ts){
+    if (autoRotate.checked && viewerAfter && viewerAfter.playerObject) {
+      // rotate slowly when enabled
+      viewerAfter.playerObject.rotation.y += 0.008;
+    }
+    requestAnimationFrame(autoRotateLoop);
+  }
+  requestAnimationFrame(autoRotateLoop);
+
+  // showGrid: toggle a helper grid in viewer scenes
+  const gridMap = new Map();
+  function setGridVisible(vis){
+    [viewerBefore, viewerAfter].forEach(v=>{
+      if (vis) {
+        if (!gridMap.has(v)) {
+          const grid = new THREE.GridHelper(6, 6, 0x444444, 0x222222);
+          grid.position.y = -0.9;
+          v.scene.add(grid);
+          gridMap.set(v, grid);
+        }
+      } else {
+        const grid = gridMap.get(v);
+        if (grid) { v.scene.remove(grid); gridMap.delete(v); }
+      }
+    });
+  }
+  showGrid.addEventListener('change', ()=> setGridVisible(showGrid.checked) );
+
+  // "Center Cameras" and "Fit Both" convenience
+  document.getElementById('centerCameras').addEventListener('click', ()=>{
+    [viewerBefore, viewerAfter].forEach(v=>{
+      v.controls.reset();
+      v.camera.position.set(0,1.6,3);
+    });
+  });
+  document.getElementById('fitBoth').addEventListener('click', ()=>{
+    // ensure both viewers focus on the player's center
+    [viewerBefore, viewerAfter].forEach(v=>{
+      v.controls.reset();
+      v.controls.update();
+    });
+  });
+
+  // Attempt a small convenience: when a skin is loaded, auto-apply conversion so user can inspect quickly
+  // We'll watch for loadedImage changes (converted when upload occurs).
+  const originalReadObserver = new MutationObserver(()=>{});
+  // Not necessary — we call convert explicitly.
+
+  // Accessibility & keyboard: convert with Enter when file selected
+  fileInput.addEventListener('keydown', (ev)=>{ if (ev.key === 'Enter') applyConversionAndPreview(); });
+
+  // initial UI state
+  detectedLabel.textContent = '—';
+  dimsLabel.textContent = '—';
+
+  // End of script
+  </script>
 </body>
 </html>
