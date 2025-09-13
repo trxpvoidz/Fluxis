@@ -1,182 +1,262 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Minecraft Legacy → Modern Skin Converter — Full</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fluxis - Legacy Skin to modern skin converter!</title>
 <style>
-  :root { --bg:#0f1720; --card:#0b1220; --muted:#9fb7c9; --accent:#06b6d4; --panel:#142336; --light-bg:#f6f9fb; --light-text:#081221; }
-  html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-  body.light{ background:var(--light-bg); color:var(--light-text); }
-  body{ background:var(--bg); color:#e6eef8; display:flex; flex-direction:column; align-items:center; padding:12px; box-sizing:border-box;}
-  .app{ width:100%; max-width:1100px; }
-  header{ display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:12px;}
-  header h1{ margin:0; font-size:18px; letter-spacing:0.2px }
-  .controls-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .card{ background:linear-gradient(180deg,#07101a,#07101a); border-radius:12px; padding:12px; border:1px solid rgba(255,255,255,0.04); box-shadow:0 6px 24px rgba(1,6,12,0.6); }
-  .u-btn{ background:var(--panel); color:inherit; border:1px solid rgba(255,255,255,0.04); padding:8px 12px; border-radius:8px; cursor:pointer; }
-  .u-btn.primary{ background:linear-gradient(90deg,var(--accent),#7dd3fc); color:#002; font-weight:700; }
-  input[type=file]{ display:none; }
-  .row{ display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-top:12px; }
-  .col{ display:flex; flex-direction:column; gap:8px; }
-  .preview-2d{ width:160px; height:160px; image-rendering:pixelated; border:1px solid rgba(255,255,255,0.06); background:#020408; }
-  .label{ font-size:13px; color:var(--muted); }
-  .subtitle{ font-size:13px; color:var(--muted); margin:0; }
-  .toggles{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .toggles label{ background:rgba(255,255,255,0.02); padding:6px 8px; border-radius:8px; cursor:pointer; font-size:13px; display:inline-flex; gap:8px; align-items:center; }
-  .viewer3d{ width:420px; height:420px; border-radius:8px; overflow:hidden; background:linear-gradient(180deg,#07101a,#041018); border:1px solid rgba(255,255,255,0.04); }
-  .meta{ font-size:13px; color:var(--muted); }
-  footer{ margin-top:14px; font-size:13px; color:var(--muted); text-align:center; }
-  .chip{ background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-weight:600; }
-  @media (max-width:980px){ .viewer3d{ width:320px; height:320px; } .preview-2d{ width:128px; height:128px; } }
-  @media (max-width:640px){ header{flex-direction:column;align-items:flex-start;gap:8px} .row{flex-direction:column} .viewer3d{ width:100%; height:360px; } }
+/* General styling */
+body { font-family: Arial, sans-serif; background: #0f1720; color: #fff; text-align: center; margin:0; padding:0; }
+img, div { image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: -o-crisp-edges; image-rendering: -webkit-optimize-contrast; -ms-interpolation-mode: nearest-neighbor; }
+table, td, tr { margin:0; padding:0; border:0; font:inherit; text-align:left; width:100%; }
+td { width:50%; }
+button { margin:2px; padding:0.4em 0.8em; cursor:pointer; background: #06b6d4; border:none; border-radius: 4px; color:#fff; transition: transform 0.2s, background 0.2s; }
+button:hover { transform: scale(1.05); background: #0dcaf0; }
+.preview-container { display:flex; gap:1em; flex-wrap:wrap; justify-content:center; margin-top:1em; }
+.preview-box { border:1px solid #888; padding:0.5em; display:flex; flex-direction:column; align-items:center; background: #0b1220; border-radius: 8px; transition: transform 0.2s; }
+.preview-box:hover { transform: scale(1.03); }
+.preview-box img { display:block; margin-bottom:0.5em; max-width:128px; }
+.controls { margin-top:1em; display:flex; flex-wrap:wrap; gap:0.5em; justify-content:center; }
+input[type=text]{ width:40px; padding:2px; border-radius:3px; border:none; text-align:center; }
+h2 { margin-top:1em; color:#06b6d4; text-shadow: 1px 1px 3px #000; }
+
+/* Footer styling and animation */
+footer { margin-top: 2em; padding: 1em; font-size: 0.9em; color:#fff; }
+footer a { color:#06b6d4; text-decoration:none; position: relative; transition: color 0.3s; }
+footer a::after { content:""; position:absolute; left:0; bottom:0; width:100%; height:2px; background:#06b6d4; transform: scaleX(0); transform-origin: right; transition: transform 0.3s ease; }
+footer a:hover::after { transform: scaleX(1); transform-origin: left; }
+footer a:hover { color:#0dcaf0; }
 </style>
 </head>
 <body>
-<div class="app">
-<header>
-<div>
-<h1>Minecraft Legacy → Modern Skin Converter</h1>
-<div class="subtitle">Auto-detects slim/wide, converts 64×32 → 64×64, 2D + 3D previews, toggles & animations.</div>
-</div>
-<div class="controls-row">
-<label class="u-btn">
-<input id="fileInput" type="file" accept="image/png">
-Upload PNG
-</label>
-<button id="convertBtn" class="u-btn primary">Convert Now</button>
-<a id="downloadBtn" class="u-btn" style="display:none">Download Modern Skin</a>
-<button id="toggleThemeBtn" class="u-btn">Toggle Light</button>
-</div>
-</header>
 
-<div class="card">
-<div class="row">
-<div class="col" style="min-width:200px;">
-<div style="display:flex;gap:12px;align-items:center;">
-<div>
-<div class="label">Original (Before)</div>
-<canvas id="before2d" class="preview-2d" width="160" height="160"></canvas>
-</div>
-<div>
-<div class="label">Converted (After)</div>
-<canvas id="after2d" class="preview-2d" width="160" height="160"></canvas>
-</div>
-</div>
-<div style="margin-top:8px;">
-<div class="meta">Detected: <span id="detectedLabel" class="chip">—</span></div>
-<div class="meta">Dimensions: <span id="dimsLabel" class="chip">—</span></div>
+<h2>Fluxis - Legacy Skin to modern skin converter</h2>
+<input type="file" id="imgLoader" accept="image/png" multiple>
+
+<div class="controls">
+	<button id="prevBtn">Previous Skin</button>
+	<button id="nextBtn">Next Skin</button>
+	<button id="downloadAllBtn">Download All as ZIP</button>
 </div>
 
-<div style="margin-top:10px" class="toggles">
-<label><input type="checkbox" id="animToggle"> Animation</label>
-<label>Anim mode:
-<select id="animMode" class="u-btn" style="padding:6px 8px; border-radius:6px;">
-<option value="idle">Idle</option>
-<option value="walk">Walk</option>
-<option value="run">Run</option>
-<option value="spin">Spin</option>
-</select>
-</label>
-<label><input type="checkbox" id="showGrid"> Ground Grid</label>
-<label><input type="checkbox" id="autoRotate"> Auto-rotate</label>
+<div id="imgTools" class="controls">
+	Zoom: 
+	<button onclick="zoomCurrent('0.25')">1:4</button>
+	<button onclick="zoomCurrent('0.5')">1:2</button>
+	<button onclick="zoomCurrent('1')">1:1</button>
+	<button onclick="zoomCurrent('2')">2:1</button>
 </div>
 
-<div style="margin-top:10px;">
-<div class="label">Model parts (3D viewer)</div>
-<div class="toggles" id="partToggles">
-<label><input type="checkbox" data-part="head" checked>Head</label>
-<label><input type="checkbox" data-part="body" checked>Body</label>
-<label><input type="checkbox" data-part="leftArm" checked>Left Arm</label>
-<label><input type="checkbox" data-part="rightArm" checked>Right Arm</label>
-<label><input type="checkbox" data-part="leftLeg" checked>Left Leg</label>
-<label><input type="checkbox" data-part="rightLeg" checked>Right Leg</label>
-<label><input type="checkbox" data-part="hat" checked>Hat</label>
-<label><input type="checkbox" data-part="jacket" checked>Jacket</label>
-<label><input type="checkbox" data-part="leftSleeve" checked>Left Sleeve</label>
-<label><input type="checkbox" data-part="rightSleeve" checked>Right Sleeve</label>
-<label><input type="checkbox" data-part="leftPants" checked>Left Pants</label>
-<label><input type="checkbox" data-part="rightPants" checked>Right Pants</label>
-</div>
+<div id="imgControl" class="controls"></div>
+<div id="previews" class="preview-container"></div>
 
-<div style="margin-top:8px;">
-<button id="resetParts" class="u-btn">Reset All Parts</button>
-</div>
-</div>
-</div>
+<script src="three.min.js"></script>
+<script src="uvareas.js"></script>
+<script src="uvcharacter.js"></script>
+<script src="zoom.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
-<div class="col" style="flex:1;min-width:320px;">
-<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;">
-<div style="flex:1">
-<div class="label">3D Preview — Original</div>
-<div id="viewerBefore" class="viewer3d"></div>
-</div>
-<div style="flex:1">
-<div class="label">3D Preview — Converted</div>
-<div id="viewerAfter" class="viewer3d"></div>
-</div>
-</div>
-
-<div style="margin-top:10px; display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-<div class="label">Extras:</div>
-<button id="centerCameras" class="u-btn">Center Cameras</button>
-<button id="fitBoth" class="u-btn">Fit Both</button>
-</div>
-</div>
-</div>
-</div>
-
-<footer class="card" style="margin-top:12px; text-align:left;">
-<strong>Notes:</strong> This tool <em>inspects</em> and converts legacy skins to modern format. Auto-detects arm width and applies proper mapping. No painting/editing included. Works on desktop & mobile.
-</footer>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-beta.4/bundle/skinview3d.min.js"></script>
 <script>
-const fileInput=document.getElementById('fileInput'), convertBtn=document.getElementById('convertBtn'), downloadBtn=document.getElementById('downloadBtn'), before2d=document.getElementById('before2d'), after2d=document.getElementById('after2d'), detectedLabel=document.getElementById('detectedLabel'), dimsLabel=document.getElementById('dimsLabel'), toggleThemeBtn=document.getElementById('toggleThemeBtn');
-const animToggle=document.getElementById('animToggle'), animMode=document.getElementById('animMode'), showGrid=document.getElementById('showGrid'), autoRotate=document.getElementById('autoRotate'), resetPartsBtn=document.getElementById('resetParts'), partTogglesContainer=document.getElementById('partToggles');
-let loadedImage=null, convertedCanvas=null, detectedSlim=false;
+const constSkinMinecraft = "minecraft";
+const constSkinMinetest = "minetest";
 
-// Helpers
-function drawToCanvas(canvas,img,displaySize=160){const ctx=canvas.getContext('2d');const scale=Math.min(displaySize/img.width,displaySize/img.height);const w=Math.round(img.width*scale),h=Math.round(img.height*scale);canvas.width=w;canvas.height=h;ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,w,h);ctx.drawImage(img,0,0,img.width,img.height,0,0,w,h);}
-function detectSlimModel(img){const w=img.width,h=img.height,tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const ctx=tmp.getContext('2d');ctx.drawImage(img,0,0);const scaleX=w/64,scaleY=h/32,sampleX=Math.round(47*scaleX),sy=Math.round(16*scaleY),sh=Math.max(4,Math.round(12*scaleY));try{const data=ctx.getImageData(sampleX,sy,1,sh).data;let opaque=0;for(let i=0;i<data.length;i+=4) if(data[i+3]>12) opaque++;return opaque<(sh*0.45);}catch(e){return false;}}
-function convertLegacyToModern(img,slim){const sw=img.width,sh=img.height;const src=document.createElement('canvas');src.width=64;src.height=64;const sctx=src.getContext('2d');sctx.imageSmoothingEnabled=false;sctx.drawImage(img,0,0,64,64);return src;}
+let skins = [];
+let currentIndex = 0;
 
-// File load
-fileInput.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;if(!f.type.includes('png')){alert('Please upload a PNG skin.');return;}const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{loadedImage=img;dimsLabel.textContent=img.width+'×'+img.height;drawToCanvas(before2d,img);detectedSlim=detectSlimModel(img);detectedLabel.textContent=detectedSlim?'Slim (Alex)':'Wide (Steve)';};img.src=ev.target.result;};r.readAsDataURL(f);});
+document.getElementById("imgLoader").addEventListener("change", loadImages);
+document.getElementById("prevBtn").addEventListener("click", ()=>switchSkin(-1));
+document.getElementById("nextBtn").addEventListener("click", ()=>switchSkin(1));
+document.getElementById("downloadAllBtn").addEventListener("click", downloadAll);
 
-// Drag & drop
-document.body.addEventListener('dragover',e=>{e.preventDefault();});
-document.body.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)fileInput.files=f;fileInput.dispatchEvent(new Event('change'));});
+function loadImages() {
+	const files = document.getElementById("imgLoader").files;
+	const container = document.getElementById("previews");
+	const imgControlDiv = document.getElementById("imgControl");
+	container.innerHTML = "";
+	imgControlDiv.innerHTML = "";
+	skins = [];
 
-// Theme
-toggleThemeBtn.addEventListener('click',()=>{document.body.classList.toggle('light');toggleThemeBtn.textContent=document.body.classList.contains('light')?'Toggle Dark':'Toggle Light';});
+	Array.from(files).forEach((file, index) => {
+		const dstImg = document.createElement("img");
+		const characterDiv = document.createElement("div");
+		characterDiv.id = "character" + index;
 
-// Conversion
-function applyConversionAndPreview(){if(!loadedImage){alert('No image loaded.');return;}convertedCanvas=convertLegacyToModern(loadedImage,detectedSlim);drawToCanvas(after2d,convertedCanvas);downloadBtn.style.display='inline-block';downloadBtn.href=convertedCanvas.toDataURL('image/png');downloadBtn.download='modern_skin.png';viewerBefore.loadSkin(loadedImage.src);viewerAfter.loadSkin(convertedCanvas.toDataURL(),{slim:detectedSlim});syncPartToggleStates();}
-convertBtn.addEventListener('click',applyConversionAndPreview);
+		const box = document.createElement("div");
+		box.className = "preview-box";
+		box.appendChild(dstImg);
+		box.appendChild(characterDiv);
+		container.appendChild(box);
 
-// Skinview3d
-function createCanvasFor(el){const c=document.createElement('canvas');(typeof el==='string'?document.querySelector(el):el).innerHTML='';(typeof el==='string'?document.querySelector(el):el).appendChild(c);return c;}
-const viewerBefore=new skinview3d.SkinViewer({canvas:createCanvasFor('#viewerBefore')});
-const viewerAfter=new skinview3d.SkinViewer({canvas:createCanvasFor('#viewerAfter')});
-[viewerBefore,viewerAfter].forEach(v=>{v.controls.enableZoom=true;v.controls.enableRotate=true;v.controls.enablePan=false;v.camera.position.set(0,1.6,3);v.scene.add(new THREE.AmbientLight(0xffffff,0.6));const dl=new THREE.DirectionalLight(0xffffff,0.7);dl.position.set(5,10,7);v.scene.add(dl);v.setSize(Math.min(420,v.canvas.clientWidth),Math.min(420,v.canvas.clientHeight));});
-function syncPartToggleStates(){partTogglesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb=>{cb.checked=true;safeSetPartVisible(cb.dataset.part,true);});}
-function safeSetPartVisible(part,visible){try{if(viewerAfter.model&&viewerAfter.model[part])viewerAfter.model[part].visible=visible;}catch(e){console.warn("Part toggle failed:",part,e);}}
-partTogglesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb=>{cb.addEventListener('change',e=>{safeSetPartVisible(cb.dataset.part,cb.checked);});});
-resetPartsBtn.addEventListener('click',()=>{partTogglesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb=>{cb.checked=true;safeSetPartVisible(cb.dataset.part,true);});});
+		const srcImg = new Image();
+		srcImg.onload = () => {
+			const skinObj = {srcImg, dstImg, characterDiv};
+			skins.push(skinObj);
+			processSkin(skinObj);
+			addControls(skinObj, index);
+			if(index===0) showSkin(0);
+		};
+		srcImg.src = URL.createObjectURL(file);
+	});
+}
 
-// Auto-rotate & grid
-setInterval(()=>{if(autoRotate.checked&&viewerAfter.model)viewerAfter.model.rotation.y+=0.01;if(showGrid.checked){if(!viewerAfter.grid){viewerAfter.grid=new THREE.GridHelper(6,6,0x444444,0x222222);viewerAfter.scene.add(viewerAfter.grid);}if(!viewerBefore.grid){viewerBefore.grid=new THREE.GridHelper(6,6,0x444444,0x222222);viewerBefore.scene.add(viewerBefore.grid);}}if(!showGrid.checked){if(viewerAfter.grid){viewerAfter.scene.remove(viewerAfter.grid);viewerAfter.grid=null;}if(viewerBefore.grid){viewerBefore.scene.remove(viewerBefore.grid);viewerBefore.grid=null;}}},16);
+function addControls(skin, index){
+	const controlDiv = document.getElementById("imgControl");
+	const wrapper = document.createElement("div");
+	wrapper.id = "controls"+index;
 
-// Animation
-animToggle.addEventListener('change',()=>{viewerAfter.animations.stop();if(animToggle.checked)viewerAfter.animations.play(animMode.value);});
-animMode.addEventListener('change',()=>{viewerAfter.animations.stop();if(animToggle.checked)viewerAfter.animations.play(animMode.value);});
+	function createButton(label, callback){
+		const btn = document.createElement("button");
+		btn.innerText = label;
+		btn.onclick = callback;
+		return btn;
+	}
 
-// Center & fit
-document.getElementById('centerCameras').addEventListener('click',()=>{viewerBefore.camera.position.set(0,1.6,3);viewerAfter.camera.position.set(0,1.6,3);});
-document.getElementById('fitBoth').addEventListener('click',()=>{viewerBefore.fitToSkin();viewerAfter.fitToSkin();});
+	function createAlphaInput(id){ 
+		const inp = document.createElement("input");
+		inp.type="text"; inp.size="1"; inp.value="0.5"; inp.id=id; return inp;
+	}
+
+	// Cape
+	wrapper.appendChild(createButton("Copy Cape", ()=>copy('areaJacket.back','areaCapeMinetest',0,null,skin)));
+	wrapper.appendChild(createButton("Erase Cape", ()=>copy('areaCapeMinetest','areaNull',0,null,skin)));
+
+	// Jacket
+	const alphaJacket = createAlphaInput("alphaJacket"+index);
+	wrapper.appendChild(document.createTextNode(" Jacket Alpha: "));
+	wrapper.appendChild(alphaJacket);
+	wrapper.appendChild(createButton("Copy Jacket", ()=>copy('areaJacket.all','areaBody.all',0,"alphaJacket"+index,skin)));
+
+	// Body restore
+	wrapper.appendChild(createButton("Body.Back", ()=>copy('areaBody.back','areaBody.back',0,null,skin)));
+	wrapper.appendChild(createButton("Body", ()=>copy('areaBody.all','areaBody.all',0,null,skin)));
+
+	// Left Trouser
+	const alphaTrouserL = createAlphaInput("alphaTrouserLeft"+index);
+	wrapper.appendChild(document.createTextNode(" Left Trouser Alpha: "));
+	wrapper.appendChild(alphaTrouserL);
+	wrapper.appendChild(createButton("Copy Left Trouser", ()=>copy('areaTrouserLeft.all','areaLegRight.all',1,"alphaTrouserLeft"+index,skin)));
+	wrapper.appendChild(createButton("Leg", ()=>copy('areaLegLeft.all','areaLegRight.all',1,null,skin)));
+
+	// Right Trouser
+	const alphaTrouserR = createAlphaInput("alphaTrouserRight"+index);
+	wrapper.appendChild(document.createTextNode(" Right Trouser Alpha: "));
+	wrapper.appendChild(alphaTrouserR);
+	wrapper.appendChild(createButton("Copy Right Trouser", ()=>copy('areaTrouserRight.all','areaLegRight.all',0,"alphaTrouserRight"+index,skin)));
+	wrapper.appendChild(createButton("Leg", ()=>copy('areaLegRight.all','areaLegRight.all',0,null,skin)));
+
+	// Left Sleeve
+	const alphaSleeveL = createAlphaInput("alphaSleeveLeft"+index);
+	wrapper.appendChild(document.createTextNode(" Left Sleeve Alpha: "));
+	wrapper.appendChild(alphaSleeveL);
+	wrapper.appendChild(createButton("Copy Left Sleeve", ()=>copy('areaSleeveLeft.all','areaArmRight.all',1,"alphaSleeveLeft"+index,skin)));
+	wrapper.appendChild(createButton("Arm", ()=>copy('areaArmLeft.all','areaArmRight.all',1,null,skin)));
+
+	// Right Sleeve
+	const alphaSleeveR = createAlphaInput("alphaSleeveRight"+index);
+	wrapper.appendChild(document.createTextNode(" Right Sleeve Alpha: "));
+	wrapper.appendChild(alphaSleeveR);
+	wrapper.appendChild(createButton("Copy Right Sleeve", ()=>copy('areaSleeveRight.all','areaArmRight.all',0,"alphaSleeveRight"+index,skin)));
+	wrapper.appendChild(createButton("Arm", ()=>copy('areaArmRight.all','areaArmRight.all',0,null,skin)));
+
+	controlDiv.appendChild(wrapper);
+}
+
+function processSkin(skin) {
+	const {srcImg,dstImg,characterDiv} = skin;
+	const dstCanvas = document.createElement("canvas");
+	const context = dstCanvas.getContext("2d");
+
+	let srcWidth = srcImg.width;
+	let srcHeight = srcImg.height;
+	let uvFaceWidth = srcWidth / 16;
+	let dstHeight = srcWidth;
+	let srcSkinType = constSkinMinecraft;
+	if(srcWidth === srcHeight*2){ srcSkinType=constSkinMinetest; dstHeight=srcWidth; }
+
+	dstCanvas.width = srcWidth;
+	dstCanvas.height = dstHeight;
+
+	// Copy upper part
+	draw(srcImg, areaMinetest, context, areaMinetest, uvFaceWidth, 0);
+
+	// Cleanup and copy jacket/cape
+	if(srcSkinType === constSkinMinecraft){
+		[areaHead.unusedL, areaHead.unusedR, areaHat.unusedL, areaHat.unusedR,
+		areaLegRight.unusedL, areaLegRight.unusedR, areaBody.unusedL, areaBody.unusedR,
+		areaArmRight.unusedL, areaArmRight.unusedR, areaUnusedMinetest].forEach(a=>draw(srcImg,a,context,areaNull,uvFaceWidth,0));
+		draw(srcImg, areaJacket.back, context, areaCapeMinetest, uvFaceWidth,0);
+	}else{
+		[areaHead.unusedL, areaHead.unusedR, areaHat.unusedL, areaHat.unusedR,
+		areaLegRight.unusedL, areaLegRight.unusedR, areaBody.unusedL, areaBody.unusedR,
+		areaArmRight.unusedL, areaArmRight.unusedR, areaUnusedMinecraft].forEach(a=>draw(srcImg,a,context,areaNull,uvFaceWidth,0));
+		draw(srcImg, areaCapeMinetest, context, areaJacket.back, uvFaceWidth,0);
+		[["LegRight.top","LegLeft.top"],["LegRight.bottom","LegLeft.bottom"],
+		["LegRight.lfr","LegLeft.lfr"],["LegRight.back","LegLeft.back"],
+		["ArmRight.top","ArmLeft.top"],["ArmRight.bottom","ArmLeft.bottom"],
+		["ArmRight.lfr","ArmLeft.lfr"],["ArmRight.back","ArmLeft.back"]].forEach(pair=>{
+			draw(dstCanvas, eval("area"+pair[0]), context, eval("area"+pair[1]), uvFaceWidth,1);
+		});
+	}
+
+	skin.dstCanvas = dstCanvas;
+	dstImg.src = dstCanvas.toDataURL();
+
+	skin.character3D = new MinecraftCharacter(characterDiv.id);
+	const ctx = skin.character3D.canvas.getContext("2d");
+	ctx.clearRect(0,0,dstCanvas.width,dstCanvas.height);
+	ctx.drawImage(dstCanvas,0,0);
+	skin.character3D.render();
+}
+
+function draw(srcImg, srcArea, dstCtx, dstArea, uvFaceWidth, flip){
+	if(!srcArea || !dstArea) return;
+	let bx = srcArea.x*uvFaceWidth;
+	let by = srcArea.y*uvFaceWidth;
+	let bw = srcArea.w*uvFaceWidth;
+	let bh = srcArea.h*uvFaceWidth;
+	let dx = dstArea.x*uvFaceWidth;
+	let dy = dstArea.y*uvFaceWidth;
+	if(flip){
+		const tmp = document.createElement("canvas");
+		tmp.width = bw; tmp.height = bh;
+		const ctx = tmp.getContext("2d");
+		ctx.translate(bw,0); ctx.scale(-1,1);
+		ctx.drawImage(srcImg,bx,by,bw,bh,0,0,bw,bh);
+		dstCtx.drawImage(tmp,dx,dy,bw,bh);
+	}else dstCtx.drawImage(srcImg,bx,by,bw,bh,dx,dy,bw,bh);
+}
+
+function copy(from,to,flip,alphaId,skin){
+	const context = skin.dstCanvas.getContext("2d");
+	let areaFrom = eval(from);
+	let areaTo = eval(to);
+	let alpha = 1;
+	if(alphaId) alpha = parseFloat(document.getElementById(alphaId).value)||1;
+	context.globalAlpha = alpha;
+	if(areaTo === areaNull) draw(skin.srcImg,areaFrom,context,areaNull,skin.dstCanvas.width/16,flip||0);
+	else draw(skin.srcImg,areaFrom,context,areaTo,skin.dstCanvas.width/16,flip||0);
+	context.globalAlpha = 1;
+	skin.dstImg.src = skin.dstCanvas.toDataURL();
+}
+
+function showSkin(index){ skins.forEach((s,i)=>{s.dstImg.parentElement.style.display=(i===index)?"flex":"none"; }); currentIndex=index;}
+function switchSkin(dir){ let next=(currentIndex+dir+skins.length)%skins.length; showSkin(next);}
+function zoomCurrent(scale){ if(skins[currentIndex]) zoom.to(scale,skins[currentIndex].dstImg.parentElement);}
+
+function downloadAll(){
+	if(skins.length===0) return alert("No skins loaded!");
+	const zip = new JSZip();
+	skins.forEach((skin,i)=>{
+		const dataURL = skin.dstCanvas.toDataURL("image/png");
+		const base64 = dataURL.split(',')[1];
+		zip.file("skin"+(i+1)+".png", base64, {base64:true});
+	});
+	zip.generateAsync({type:"blob"}).then(blob=>saveAs(blob,"converted_skins.zip"));
+}
 </script>
+
+<footer>Inspired by <a href="https://godly.github.io/minetest-skin-converter" target="_blank">Minetest Skin Converter</a></footer>
+
 </body>
 </html>
